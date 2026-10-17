@@ -3384,6 +3384,53 @@ function showCoinFlip(firstIsHuman) {
     el.classList.remove('hidden');
   });
 }
+/** Camera di dialogo (placeholder): dopo la moneta, prima dell’inizio reale della partita. */
+function showDialogueRoom() {
+  try { hideMatchLoading(); } catch (_) {}
+  return new Promise(resolve => {
+    let el = $('dialogue-room-dialog');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'dialogue-room-dialog';
+      el.className = 'card-detail-overlay';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.setAttribute('aria-labelledby', 'dialogue-room-title');
+      el.style.zIndex = '146';
+      stageRoot().append(el);
+    }
+    el.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.style.cssText = 'width:min(92vw,440px);margin:auto;padding:1.4rem 1.2rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
+
+    const title = document.createElement('h2');
+    title.id = 'dialogue-room-title';
+    title.style.cssText = 'margin:0 0 .75rem;font-family:"Lilita One",Georgia,serif;font-size:1.25rem;color:#e8c565;';
+    title.textContent = 'Camera di dialogo';
+
+    const body = document.createElement('p');
+    body.style.cssText = 'margin:0 0 1.2rem;line-height:1.5;font-size:1.05rem;';
+    body.textContent = 'PLACEHOLDER PER DIALOGHI UTILO';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'primary-button';
+    btn.textContent = 'Comprendo';
+    btn.onclick = () => {
+      el.classList.add('hidden');
+      el.style.display = 'none';
+      resolve();
+    };
+
+    panel.append(title, body, btn);
+    el.append(panel);
+    el.classList.remove('hidden');
+    el.style.display = '';
+  });
+}
+
+
 async function newMatch(primaryColor, secondaryColor, options = {}) {
   cardLoaded.clear();
   lastPhaseKey = null;
@@ -3586,6 +3633,7 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
 
       // 3) Moneta del destino
       await showCoinFlip(state?.active_player_index === 1);
+      await showDialogueRoom();
     } else if (currentMode === 'endless') {
       // Endless: maledizione solo se non già in scena anima; niente moneta né benedizione
       if (!options.curseAlreadyShown) {
@@ -3608,11 +3656,10 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
         await showCurseDialog(humanColors, aiColors);
       }
       await showCoinFlip(state?.active_player_index === 1);
+      await showDialogueRoom();
       const uname = usernameFromEmail((await getCurrentUser())?.email) || 'coraggioso';
-      const bless = `Che le bestie divine ti assistano, ${uname}.`;
       const desk = $('narrator-desk-speech');
-      if (desk) desk.textContent = bless;
-      await notice(bless, 'success');
+      if (desk) desk.textContent = `Che le bestie divine ti assistano, ${uname}.`;
     }
 
     await render();
