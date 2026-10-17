@@ -2239,8 +2239,7 @@ async function showAnimaScene() {
   el.classList.add('hidden');
   el.style.display = 'none';
   hideHome();
-  showMatchLoading('…');
-  // Avvia partita con tertiary già scelto (coerente con il messaggio); maledizione già mostrata
+    // Avvia partita con tertiary già scelto (coerente con il messaggio); maledizione già mostrata
   await newMatch(primary, secondary, {
     isNewStory: currentMode === 'story',
     tertiaryColor: tertiary,
@@ -3395,8 +3394,7 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
   hideStart();
   try { hideStoryStart(); } catch (_) {}
   try { hideEndlessStart(); } catch (_) {}
-  showMatchLoading('…');
-  if ($('deck-color-confirm')) $('deck-color-confirm').disabled = true;
+    if ($('deck-color-confirm')) $('deck-color-confirm').disabled = true;
   if ($('deck-color-validation')) $('deck-color-validation').textContent = '';
   try {
     // Body base +, in Storia: vita boss, Medaglione, terziario stabile, colore del boss IA
