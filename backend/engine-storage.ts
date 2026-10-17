@@ -143,21 +143,26 @@ export async function ensureCatalog(): Promise<void> {
     }
   }
 
-  // Seed: riempie id non presenti (mostrissimi lab, backup, …)
-  let seedAdded = 0;
-  for (const s of allSeedCards()) {
-    if (cardCache.has(s.id)) continue;
-    cardCache.set(s.id, seedToCardData(s));
-    bossFlags.set(s.id, s.is_boss === true);
-    seedAdded++;
-  }
-  if (seedAdded && catalogSource === 'supabase') catalogSource = 'mixed';
+  // Se Supabase ha carte enabled → SOLO quelle (niente seed mescolato).
+  // Seed solo se il catalogo è ancora vuoto (lab senza DB / tabella vuota).
   if (!cardCache.size) {
     for (const s of allSeedCards()) {
       cardCache.set(s.id, seedToCardData(s));
       bossFlags.set(s.id, s.is_boss === true);
     }
     catalogSource = 'seed';
+    console.info('[penombra] catalogo: solo seed (Supabase vuoto o non configurato)');
+  } else {
+    // Mostrissimi: se non sono su Supabase, tieni solo quelli del seed (offerta separata).
+    let extra = 0;
+    for (const s of allSeedCards()) {
+      if (s.card_type !== 'mostrissimo') continue;
+      if (cardCache.has(s.id)) continue;
+      cardCache.set(s.id, seedToCardData(s));
+      bossFlags.set(s.id, s.is_boss === true);
+      extra++;
+    }
+    if (extra) console.info(`[penombra] aggiunti ${extra} mostrissimi dal seed (non in Supabase)`);
   }
 
   catalogLoaded = true;
