@@ -1747,7 +1747,15 @@ function showStoryProgressDetail() {
 }
 async function logs() {
   if (!$('match-logs') || !matchId) return;
-  const {logs:entries} = await api(`/match/${encodeURIComponent(matchId)}/logs?limit=1000`);
+  let entries = [];
+  try {
+    const res = await api(`/match/${encodeURIComponent(matchId)}/logs?limit=1000`);
+    entries = res?.logs ?? [];
+  } catch (e) {
+    // Lab senza match_logs: non chiamare fail(), la partita deve continuare
+    console.warn('Log partita non disponibili', e);
+    return;
+  }
   $('match-logs').replaceChildren();
   const texts = [];
   for (const e of entries ?? []) {

@@ -156,9 +156,14 @@ async function requireAuth(req: Request, opts?: { skipDeviceCheck?: boolean }): 
   return userId;
 }
 
-function isMissingProfileTable(message: string): boolean {
+function isMissingTable(message: string, tableHint?: string): boolean {
   const m = message.toLowerCase();
-  return m.includes('player_profiles') || m.includes('schema cache') || m.includes('does not exist');
+  if (m.includes('schema cache') || m.includes('does not exist') || m.includes('could not find the table')) return true;
+  if (tableHint && m.includes(tableHint.toLowerCase())) return true;
+  return m.includes('player_profiles') || m.includes('match_logs');
+}
+function isMissingProfileTable(message: string): boolean {
+  return isMissingTable(message, 'player_profiles');
 }
 
 /** Profilo opzionale: in lab senza tabella non blocca login/partita. */
@@ -541,7 +546,15 @@ apiRouter.get('/match/:id/logs', async (req: Request, res: Response) => {
     const { data, error } = await supabase.from('match_logs')
       .select('id, match_id, log_data, created_at').eq('match_id', matchId)
       .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(limit);
-    if (error) throw new Error(`Impossibile caricare il log: ${error.message}`);
+    if (error) {
+      // Lab senza tabella match_logs: non bloccare la partita
+      if (isMissingTable(error.message, 'match_logs')) {
+        console.warn('[penombra] match_logs assente: logs vuoti');
+        res.json({ logs: [], lab: true });
+        return;
+      }
+      throw new Error(`Impossibile caricare il log: ${error.message}`);
+    }
     const ordered = (data ?? []).reverse();
     ordered.sort((a, b) => {
       const ar = Number(a.log_data?.log_revision), br = Number(b.log_data?.log_revision);
