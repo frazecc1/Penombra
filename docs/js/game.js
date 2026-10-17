@@ -77,23 +77,26 @@ function showMatchLoading(text) {
     el.id = 'match-loading-overlay';
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
-    el.style.cssText = 'position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(8,6,4,.82);padding:1.2rem;';
     document.body.appendChild(el);
   }
-  const msg = (text || 'Caricamento…').replace(/\n/g, '<br>');
-  el.innerHTML = '<div class="panel" style="width:min(92vw,360px);margin:auto;padding:1.3rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000"><p style="margin:0;line-height:1.45;font-size:1.05rem" id="match-loading-text">' + msg + '</p></div>';
-  el.style.display = 'flex';
+  el.style.cssText = 'position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(8,6,4,.82);padding:1.2rem;';
+  const msg = String(text || 'Caricamento…').replace(/\n/g, '<br>');
+  el.innerHTML = '<div class="panel" style="width:min(92vw,360px);margin:auto;padding:1.3rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000"><p style="margin:0;line-height:1.45;font-size:1.05rem">' + msg + '</p></div>';
+  el.hidden = false;
   el.classList.remove('hidden');
 }
 function hideMatchLoading() {
   const el = document.getElementById('match-loading-overlay');
-  if (el) {
-    el.classList.add('hidden');
-    el.style.display = 'none';
-  }
+  if (!el) return;
+  el.hidden = true;
+  el.classList.add('hidden');
+  el.style.display = 'none';
+  el.innerHTML = '';
 }
+// Debug F12: window.hideMatchLoading()
+try { window.hideMatchLoading = hideMatchLoading; window.showMatchLoading = showMatchLoading; } catch (_) {}
 
-/** Costo mana effettivo (Medaglione CLO in Storia: creature −1, min 1). */
+
 function effectiveManaCost(d) {
   let cost = Number(d?.mana_cost ?? 0);
   if (currentMode === 'story' && d?.card_type === 'monster') {
@@ -3240,6 +3243,7 @@ function showCurseDialog(humanColors, aiColors) {
 }
 /** Popup moneta egizia: chi inizia la partita (dopo la maledizione). */
 function showCoinFlip(firstIsHuman) {
+  try { hideMatchLoading(); } catch (_) {}
   return new Promise(resolve => {
     let el = $('coin-flip-dialog');
     if (!el) {
@@ -3420,6 +3424,8 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
     hideHome(); // importante: dopo anima scene la Home resta aperta e copre stage/dialoghi
     closeColorDialog();
     localStorage.setItem('bellum:last-match', matchId);
+    // Partita pronta: togli overlay così moneta / dialoghi sono cliccabili
+    hideMatchLoading();
 
     const humanColors = state?.deck_colors?.[1];
     const aiColors = state?.deck_colors?.[0];
