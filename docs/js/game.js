@@ -2129,6 +2129,8 @@ async function showAnimaScene() {
 
   el.classList.add('hidden');
   el.style.display = 'none';
+  hideHome();
+  showMatchLoading('Il patto si sta sigillando…');
   // Avvia partita con tertiary già scelto (coerente con il messaggio); maledizione già mostrata
   await newMatch(primary, secondary, {
     isNewStory: currentMode === 'story',
@@ -2491,7 +2493,9 @@ async function probePrior() {
   if (!prior) return;
   try {
     const [user, result] = await Promise.all([getCurrentUser(), api(`/match/${encodeURIComponent(prior)}`)]);
-    if (result.state?.state_version === 4 && user && result.state.players?.[1]?.user_id === user.id && result.state.status !== 'finished') {
+    const myId = user?.id;
+    const isMine = myId && result.state?.players?.some(pl => pl?.user_id === myId);
+    if (result.state?.state_version === 4 && isMine && result.state.status !== 'finished') {
       priorMatch = { id: prior };
       try { localStorage.setItem('bellum:last-match', prior); } catch (_) { /* ignore */ }
     } else if (result.state?.status === 'finished') {
@@ -2504,7 +2508,7 @@ async function probePrior() {
 function startDialog() {
   let el = $('start-dialog'); if (el) return el;
   el = document.createElement('div'); el.id = 'start-dialog'; el.className = 'card-detail-overlay start-dialog hidden';
-  el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true'); el.setAttribute('aria-labelledby','start-title'); el.style.zIndex = '110';
+  el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true'); el.setAttribute('aria-labelledby','start-title'); el.style.zIndex = '320';
   const panel = document.createElement('div'); panel.className = 'panel';
   const title = document.createElement('h2'); title.id = 'start-title'; title.textContent = 'Le spoglie e l’inizio';
   const text = document.createElement('p'); text.id = 'start-text';
@@ -3144,13 +3148,23 @@ function showStoryContinueChoice(isIndrazzicoNext) {
 async function recoverPrior() {
   if (!priorMatch || busy) return;
   const id = priorMatch.id; busy = true; controls();
+  hideStart();
+  hideHome();
+  showMatchLoading('Riprendo le tue spoglie…');
   try {
     const result = await api(`/match/${encodeURIComponent(id)}`);
     if (result.state?.state_version !== 4) throw new Error('Partita non più compatibile: avvia una nuova partita.');
     matchId = id; state = result.state; flow = null; priorMatch = null; deathDraft = {choiceId:null,instanceIds:[]};
     localStorage.setItem('bellum:last-match',matchId); hideStart(); hideHome(); close(); closeGraveyard(); closeColorDialog();
-  } catch(e) { fail(e); }
+  } catch(e) {
+    fail(e);
+    // Partita sparita (es. restart Render): pulisci e resta in Home
+    try { localStorage.removeItem('bellum:last-match'); } catch (_) {}
+    priorMatch = null;
+    showHome();
+  }
   finally {
+    hideMatchLoading();
     busy = false; await render().catch(fail);
     if (state) { try { await logs(); } catch(e) { console.warn(e); } notice('Partita precedente ripristinata.','success'); queuePresentation(true); }
   }
@@ -3252,8 +3266,13 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
   lastPhaseKey = null;
   if (busy || obligatory()) return;
   busy = true; controls();
+  // Blocca Home e altri click finché la partita non è pronta
+  hideHome();
+  hideStart();
+  try { hideStoryStart(); } catch (_) {}
+  try { hideEndlessStart(); } catch (_) {}
+  showMatchLoading('Il patto si sta sigillando…\n(se è la prima volta può richiedere un minuto)');
   if ($('deck-color-confirm')) $('deck-color-confirm').disabled = true;
-  // Niente popup «Creazione partita / Ho capito»: solo feedback sul form.
   if ($('deck-color-validation')) $('deck-color-validation').textContent = 'Il patto si sta sigillando…';
   try {
     // Body base +, in Storia: vita boss, Medaglione, terziario stabile, colore del boss IA
@@ -3483,6 +3502,7 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
       $('deck-color-validation').textContent = e instanceof Error ? e.message : 'Impossibile creare la partita.';
     }
   } finally {
+    hideMatchLoading();
     busy = false;
     if ($('deck-color-confirm')) $('deck-color-confirm').disabled = false;
     await render().catch(fail);
@@ -3905,12 +3925,21 @@ function showPvpResultPopup(title) {
 
 
 window.addEventListener('bellum:auth-ready', () => {
+  // Home subito (niente griglia vuota), poi probe partita da riprendere
   try { showHome(); } catch (_) { /* ignore */ }
   init()
-    .then(() => claimDeviceAndSync())
-    .then(() => showHome()) // aggiorna trofeo / endless dopo sync
+    .then(() => claimDeviceAndSync().catch(() => {}))
+    .then(async () => {
+      try { await probePrior(); } catch (_) { /* ignore */ }
+      if (priorMatch) {
+        showStart(); // dialog RIPRENDI sopra la Home (z-index alto)
+      } else {
+        showHome();
+      }
+    })
     .catch(fail);
 });
+
 // Se c’è già sessione, prepariamo i listener ma NON mostriamo ancora la Home
 // (l’utente deve prima cliccare «Sono io»)
 getCurrentUser().then(user => {

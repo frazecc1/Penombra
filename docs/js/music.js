@@ -89,3 +89,11 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
+
+// Avvio dopo login / «Sono io» (gesto utente già avvenuto → i browser permettono play)
+window.addEventListener('bellum:auth-ready', () => {
+  void tryPlay();
+});
+// Fallback: primo click ovunque
+document.addEventListener('pointerdown', () => { void tryPlay(); }, { once: true, capture: true });
