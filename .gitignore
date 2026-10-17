@@ -1,0 +1,35 @@
+# File di sistema Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthru.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# File di sistema macOS (se usi o collabori con Mac)
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Editor di codice e IDE
+.vscode/
+.idea/
+*.swp
+*.swo*
+*.sublime-workspace
+*.sublime-project
+
+# Log e file temporanei
+*.log
+*.tmp
+*.temp
+*.bak
