@@ -68,6 +68,31 @@ const faction = d => {
 };
 // ---------- Passo 1: helper di presentazione (stage) ----------
 const stageRoot = () => $('stage') ?? document.body; // tutti i dialoghi vivono dentro la colonna centrale
+
+/** Overlay di attesa: blocca click sulla Home mentre si crea/carica la partita. */
+function showMatchLoading(text) {
+  let el = document.getElementById('match-loading-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'match-loading-overlay';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.style.cssText = 'position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(8,6,4,.82);padding:1.2rem;';
+    document.body.appendChild(el);
+  }
+  const msg = (text || 'Caricamento…').replace(/\n/g, '<br>');
+  el.innerHTML = '<div class="panel" style="width:min(92vw,360px);margin:auto;padding:1.3rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000"><p style="margin:0;line-height:1.45;font-size:1.05rem" id="match-loading-text">' + msg + '</p></div>';
+  el.style.display = 'flex';
+  el.classList.remove('hidden');
+}
+function hideMatchLoading() {
+  const el = document.getElementById('match-loading-overlay');
+  if (el) {
+    el.classList.add('hidden');
+    el.style.display = 'none';
+  }
+}
+
 /** Costo mana effettivo (Medaglione CLO in Storia: creature −1, min 1). */
 function effectiveManaCost(d) {
   let cost = Number(d?.mana_cost ?? 0);
