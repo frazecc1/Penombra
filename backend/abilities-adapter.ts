@@ -100,11 +100,24 @@ export function adaptAbilities(
         for (const e of legacy) onDeath.push({ ...e });
         break;
       case 'on_enchanted_attack':
-        for (const e of legacy)
-          onPlay.push({ ...e, trigger: 'equipped_creature_attacks' });
+        for (const e of legacy) {
+          // Motore: buff su attacco aura → enchanted_creature (o triggering)
+          const patch =
+            e.type === 'buff' && (e.target === 'any_creature' || e.target === 'triggering_creature')
+              ? { ...e, trigger: 'equipped_creature_attacks', target: 'enchanted_creature' }
+              : { ...e, trigger: 'equipped_creature_attacks' };
+          onPlay.push(patch);
+        }
         break;
       case 'on_ally_enters':
-        for (const e of legacy) onPlay.push({ ...e, trigger: 'own_monster_summoned' });
+        for (const e of legacy) {
+          // Motore terraforma: buff con trigger own_monster_summoned vuole triggering_creature
+          const patch =
+            e.type === 'buff'
+              ? { ...e, trigger: 'own_monster_summoned', target: 'triggering_creature' }
+              : { ...e, trigger: 'own_monster_summoned' };
+          onPlay.push(patch);
+        }
         break;
       case 'on_opponent_turn_end':
         for (const e of legacy) onPlay.push({ ...e });

@@ -4,6 +4,7 @@ import type {
   CardData, CardEffectJson, CardInstance, DeckColors, DeckFaction, EffectDefinition, PlayerIndex, PlayerState,
 } from './types.js';
 import { effects, shuffle, supported } from './engine-board.js';
+import { listCardData } from './engine-storage.js';
 import { allSeedCards } from './catalog-seed.js';
 import { engineErrors } from './card-rules.js';
 
@@ -81,13 +82,15 @@ function effectsPlayable(x: DeckCard): boolean {
   return list.every(e => supported.has(e.type) && e.duration !== 'while_attached' && e.duration !== 'while_in_play' || x.type === 'monster' && staticCreatureBuff(e));
 }
 export async function deckPool(): Promise<DeckCard[]> {
-  // Penombra lab: catalogo statico (niente tabella Supabase cards).
+  // Catalogo da Supabase (engine-storage) con fallback seed.
   const pool: DeckCard[] = [], skipped: string[] = [];
-  for (const row of allSeedCards()) {
+  const catalog = await listCardData();
+  for (const row of catalog) {
     if (row.card_type === 'mostrissimo') continue; // offerta separata
+    const isBoss = row.is_boss === true;
     const problems = engineErrors({
       ...row,
-      is_boss: row.is_boss,
+      is_boss: isBoss,
     });
     if (problems.length) { skipped.push(`${row.id}: ${problems[0]}`); continue; }
     const code = String(row.faction_code).toUpperCase();
@@ -95,7 +98,7 @@ export async function deckPool(): Promise<DeckCard[]> {
     const x: DeckCard = {
       id: String(row.id), cost: Number(row.mana_cost), type: String(row.card_type),
       faction: code as DeckFaction, raw: row.effect_json as CardEffectJson | null,
-      death: row.effect_on_death_json as CardEffectJson | null, boss: row.is_boss === true,
+      death: row.effect_on_death_json as CardEffectJson | null, boss: isBoss,
     };
     if (Number.isInteger(x.cost) && x.cost >= 0 && deckPlayable(x)) pool.push(x);
   }
