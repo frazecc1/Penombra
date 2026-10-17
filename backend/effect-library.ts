@@ -116,7 +116,7 @@ const EFFECTS: Record<EffectId, EffectDefinitionAtomic> = {
     id: 'buff_creature',
     name: '+X attacco e +X PV',
     description:
-      'Aumenta di X sia l’attacco sia i PV massimi/correnti della stessa creatura bersaglio (un solo effetto, un solo bersaglio).',
+      'La creatura bersaglio ottiene +X attacco e +X PV (un solo effetto, un solo bersaglio).',
     allowed_card_types: ['monster', 'mostrissimo', 'aura', 'terraforma', 'maledizione', 'instant'],
     needs_amount: true,
     possible_targets: [

@@ -16,7 +16,7 @@
  *   opponent_discard  → { type: 'discard', target: 'opponent' }
  *   heal_self         → { type: 'heal', target: 'self' }
  *   damage            → { type: 'damage', target }
- *   buff_creature     → due buff permanent (attack + hp) sullo stesso target
+ *   buff_creature     → un buff permanent +X/+X (stat: 'both')
  */
 
 import type { Ability, TargetOption } from './effect-types.js';
@@ -62,10 +62,9 @@ function toLegacyEffects(ability: Ability): LegacyEffect[] {
       return [{ type: 'damage', amount: n, target: mapTarget(ability.target, 'opponent') }];
     case 'buff_creature': {
       const target = mapTarget(ability.target, 'any_creature');
-      // Un solo pezzo logico (+X/+X) → due buff motore sullo stesso bersaglio
+      // Un solo effetto: +X attacco e +X PV sulla stessa creatura (un solo click bersaglio)
       return [
-        { type: 'buff', amount: n, stat: 'attack', duration: 'permanent', target },
-        { type: 'buff', amount: n, stat: 'hp', duration: 'permanent', target },
+        { type: 'buff', amount: n, stat: 'both', duration: 'permanent', target },
       ];
     }
     default:

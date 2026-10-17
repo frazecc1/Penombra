@@ -51,7 +51,7 @@ export type EffectDefinition = {
   target?: EffectTarget;
   timing?: 'on_play' | 'instant' | 'on_death' | 'upkeep_start';
   effect_id?: string;
-  stat?: 'hp' | 'attack';
+  stat?: 'hp' | 'attack' | 'both';
   duration?: 'turn' | 'permanent' | 'while_attached' | 'while_in_play';
   reaction_trigger?: ReactionTrigger;
   // Solo Terraforme: il bonus vale per le creature con questo sottotipo e/o questa fazione.

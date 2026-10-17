@@ -14,25 +14,25 @@ function triggeredOk(e: EffectDefinition, allowed: string[]) {
   if (e.type === 'heal' || e.type === 'draw') return e.target === 'self';
   if (e.type === 'discard') return e.target === 'opponent';
   if (e.type === 'damage') return e.target === 'any_target' || e.target === 'opponent';
-  if (e.type === 'buff') return e.target === 'triggering_creature' && (e.trigger === 'own_monster_summoned' || e.trigger === 'equipped_creature_attacks') && (e.stat === 'hp' || e.stat === 'attack')
-    && (e.duration === 'permanent' || (e.duration === 'turn' && e.stat === 'attack'));
+  if (e.type === 'buff') return e.target === 'triggering_creature' && (e.trigger === 'own_monster_summoned' || e.trigger === 'equipped_creature_attacks') && (e.stat === 'hp' || e.stat === 'attack' || e.stat === 'both')
+    && (e.duration === 'permanent' || (e.duration === 'turn' && (e.stat === 'attack' || e.stat === 'both')));
   return false;
 }
 // Bonus continuo di un Mostro o Mostrissimo: tutte le tue creature (con filtro opzionale) finché è in campo.
 export function staticCreatureBuff(e: EffectDefinition) {
   return e.trigger === undefined && e.type === 'buff' && e.duration === 'while_in_play' && e.target === 'all_creatures_self'
-    && (e.stat === 'hp' || e.stat === 'attack') && Number.isInteger(e.amount) && Number(e.amount) >= 0 && Number(e.amount) <= 20;
+    && (e.stat === 'hp' || e.stat === 'attack' || e.stat === 'both') && Number.isInteger(e.amount) && Number(e.amount) >= 0 && Number(e.amount) <= 20;
 }
 export function passiveAura(d: CardData) {
   const list = effects(d.effect_json);
   return list.length > 0 && list.every(e => triggeredOk(e, ['equipped_creature_attacks']) || e.trigger === undefined && (
-    e.type === 'buff' && e.duration === 'while_attached' && (e.target === 'enchanted_creature' || e.target === 'all_creatures_self') && (e.stat === 'hp' || e.stat === 'attack') && Number.isInteger(e.amount) && Number(e.amount) >= 0 && Number(e.amount) <= 20
+    e.type === 'buff' && e.duration === 'while_attached' && (e.target === 'enchanted_creature' || e.target === 'all_creatures_self') && (e.stat === 'hp' || e.stat === 'attack' || e.stat === 'both') && Number.isInteger(e.amount) && Number(e.amount) >= 0 && Number(e.amount) <= 20
     || e.type === 'movement_cost' && e.duration === 'while_attached' && e.target === 'enchanted_creature' && e.amount === 0));
 }
 export function passiveLand(d: CardData) {
   const list = effects(d.effect_json);
   return list.length > 0 && list.every(e => triggeredOk(e, ['own_monster_summoned', 'own_turn_start', 'own_creature_dies']) || e.trigger === undefined
-    && e.type === 'buff' && e.duration === 'while_in_play' && e.target === 'all_creatures_self' && (e.stat === 'hp' || e.stat === 'attack')
+    && e.type === 'buff' && e.duration === 'while_in_play' && e.target === 'all_creatures_self' && (e.stat === 'hp' || e.stat === 'attack' || e.stat === 'both')
     && Number.isInteger(e.amount) && Number(e.amount) >= 0 && Number(e.amount) <= 20);
 }
 export function playableEffects(d: CardData) {

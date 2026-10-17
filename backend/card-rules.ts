@@ -109,7 +109,7 @@ function effectErrors(e: Json, type: string, trigger: unknown, death = false): s
     else if (t === 'buff') {
       if (e.target !== 'triggering_creature') out.push('Un bonus con trigger colpisce la creatura che ha attivato il trigger.');
       if (e.trigger !== 'own_monster_summoned' && e.trigger !== 'equipped_creature_attacks') out.push('Il bonus alla creatura vale solo con "evochi una creatura" o "quando attacca".');
-      if (e.stat !== 'hp' && e.stat !== 'attack') out.push('Bonus: scegli attacco o PV.');
+      if (e.stat !== 'hp' && e.stat !== 'attack' && e.stat !== 'both') out.push('Bonus: scegli attacco, PV o entrambi (+X/+X).');
       if (!(e.duration === 'permanent' || (e.duration === 'turn' && e.stat === 'attack')))
         out.push('Il bonus del trigger è permanente (a fine turno solo per l\'attacco).');
     } else out.push(`${t}: effetto non ammesso con un trigger.`);
@@ -131,7 +131,7 @@ function effectErrors(e: Json, type: string, trigger: unknown, death = false): s
   if (t === 'buff') {
     const d = String(e.duration);
     if (!DURATIONS.includes(d)) out.push('Bonus: durata non supportata.');
-    if (e.stat !== 'hp' && e.stat !== 'attack') out.push('Bonus: scegli attacco o PV.');
+    if (e.stat !== 'hp' && e.stat !== 'attack' && e.stat !== 'both') out.push('Bonus: scegli attacco, PV o entrambi (+X/+X).');
     if (e.stat === 'hp' && d === 'turn') out.push('Bonus PV a fine turno non supportato.');
     const passive = d === 'while_attached' || d === 'while_in_play';
     if (type === 'aura' && d !== 'while_attached') out.push('Le Aure usano solo bonus "finché è attaccata".');

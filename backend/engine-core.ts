@@ -368,13 +368,20 @@ async function applyEffect(c: Context, task: ResolveEffectWork) {
     const recipients = e.target === 'all_creatures' || e.target === 'all_creatures_self' ? units(s, p).map(x => x.cell) : summoned ? [summoned.cell] : own ? [own.cell] : selected ? [selected.cell] : [];
     if (e.duration === 'while_attached' || e.duration === 'while_in_play') throw new Error('Un bonus continuo non si risolve come evento');
     for (const cell of recipients) {
-      if (e.stat === 'hp' && e.duration === 'permanent') { cell.max_hp += n; cell.hp += n; }
-      else if (e.stat === 'attack' && (e.duration === 'turn' || e.duration === 'permanent')) {
+      const both = e.stat === 'both';
+      if ((e.stat === 'hp' || both) && e.duration === 'permanent') {
+        cell.max_hp += n;
+        cell.hp += n;
+      }
+      if ((e.stat === 'attack' || both) && (e.duration === 'turn' || e.duration === 'permanent')) {
         cell.attack += n;
         if (e.duration === 'turn') cell.temp_attack = (cell.temp_attack ?? 0) + n;
-      } else throw new Error('Potenziamento non supportato');
+      }
+      if (!both && e.stat !== 'hp' && e.stat !== 'attack') throw new Error('Potenziamento non supportato');
+      if (e.stat === 'hp' && e.duration !== 'permanent') throw new Error('Potenziamento non supportato');
     }
-    log(c, p, 'effect_buff', `${d.name}: potenziamento +${n}.`);
+    const buffLabel = e.stat === 'both' ? `+${n}/+${n}` : e.stat === 'hp' ? `+${n} PV` : `+${n} attacco`;
+    log(c, p, 'effect_buff', `${d.name}: la creatura bersaglio ottiene ${buffLabel}.`);
   } else if (e.type === 'counter' || e.type === 'nope') {
     throw new Error('NOPE si risolve esclusivamente nella finestra reattiva');
   } else throw new Error(`${d.name}: effetto ${e.type} non implementato.`);
