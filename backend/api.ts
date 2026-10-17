@@ -156,13 +156,25 @@ async function requireAuth(req: Request, opts?: { skipDeviceCheck?: boolean }): 
   return userId;
 }
 
+function isMissingProfileTable(message: string): boolean {
+  const m = message.toLowerCase();
+  return m.includes('player_profiles') || m.includes('schema cache') || m.includes('does not exist');
+}
+
+/** Profilo opzionale: in lab senza tabella non blocca login/partita. */
 async function upsertProfile(userId: string, patch: Record<string, unknown>) {
-  if (!supabase) return; // lab memory: niente profili
+  if (!supabase) return;
   const { error } = await supabase.from('player_profiles').upsert(
     { user_id: userId, updated_at: new Date().toISOString(), ...patch },
     { onConflict: 'user_id' },
   );
-  if (error) throw new Error(`Profilo: ${error.message}`);
+  if (error) {
+    if (isMissingProfileTable(error.message)) {
+      console.warn('[penombra] player_profiles assente: skip upsert');
+      return;
+    }
+    throw new Error(`Profilo: ${error.message}`);
+  }
 }
 // Il proprietario di una partita non cambia mai: una volta letto lo ricordiamo
 // (solo risultati positivi, con tetto di dimensione) e risparmiamo una query a richiesta.
@@ -268,18 +280,31 @@ apiRouter.use((req: Request, res: Response, next: NextFunction) => {
   };
   next();
 });
-apiRouter.get('/health', (_req: Request, res: Response) => res.status(200).json({ status: 'ok', service: 'bellum-penumbrum-api' }));
+apiRouter.get('/health', (_req: Request, res: Response) => res.status(200).json({ status: 'ok', service: 'penombra-api' }));
 
 /** Profilo giocatore: progressi Storia + ultima partita + device attivo (cross-device). */
 apiRouter.get('/me/profile', async (req: Request, res: Response) => {
   try {
     const userId = await requireAuth(req);
+    if (!supabase) {
+      res.json({ story_progress: null, last_match_id: null, active_device_label: null, session_claimed_at: null, updated_at: null, lab: true });
+      return;
+    }
     const { data, error } = await supabase
       .from('player_profiles')
       .select('story_progress, last_match_id, active_device_id, active_device_label, session_claimed_at, updated_at')
       .eq('user_id', userId)
       .maybeSingle();
-    if (error) throw new Error(`Lettura profilo: ${error.message}`);
+    if (error) {
+      if (isMissingProfileTable(error.message)) {
+        res.json({
+          story_progress: null, last_match_id: null, active_device_label: null,
+          session_claimed_at: null, updated_at: null, lab: true,
+        });
+        return;
+      }
+      throw new Error(`Lettura profilo: ${error.message}`);
+    }
     res.json({
       story_progress: data?.story_progress ?? null,
       last_match_id: data?.last_match_id ?? null,
@@ -509,7 +534,11 @@ apiRouter.get('/match/:id/logs', async (req: Request, res: Response) => {
     const { matchId } = await withMatch(req, res);
     const requested = Number(req.query.limit ?? 100);
     const limit = Number.isInteger(requested) ? Math.max(1, Math.min(requested, 1000)) : 100;
-    const { data, error } = await (supabase as SupabaseClient).from('match_logs')
+    if (!supabase) {
+      res.json({ logs: [] });
+      return;
+    }
+    const { data, error } = await supabase.from('match_logs')
       .select('id, match_id, log_data, created_at').eq('match_id', matchId)
       .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(limit);
     if (error) throw new Error(`Impossibile caricare il log: ${error.message}`);
