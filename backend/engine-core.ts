@@ -269,8 +269,9 @@ async function applyEffect(c: Context, task: ResolveEffectWork) {
   const isDamage = e.type === 'damage' || e.type === 'damage_creature';
   const playerHit = isDamage && e.target === 'any_target' && task.target_instance_id === playerTargetId(foe);
   const isPermanentEffect = e.type === 'return_hand' || e.type === 'destroy';
-  const selected = targeted(e) && !playerHit && !isPermanentEffect ? target(s, p, e, task.target_instance_id) : null;
-  if (targeted(e) && !playerHit && !isPermanentEffect && !selected) {
+  const isPlayerPick = e.target === 'any_player' || (isDamage && e.target === 'any_target' && typeof task.target_instance_id === 'string' && task.target_instance_id.startsWith('player:'));
+  const selected = targeted(e) && !playerHit && !isPermanentEffect && !isPlayerPick ? target(s, p, e, task.target_instance_id) : null;
+  if (targeted(e) && !playerHit && !isPermanentEffect && !isPlayerPick && !selected) {
     log(c, p, 'effect_no_target', `${d.name}: bersaglio non più valido, effetto annullato.`, { card_id: d.id }); return;
   }
   if (e.type === 'draw') {

@@ -78,9 +78,9 @@ export type Ability = {
   amount: number;
   /**
    * Obbligatorio se l’effetto non ha target fisso:
-   * - draw → self | opponent
    * - damage → self | opponent | any_creature | any_target
    * - buff_creature → any_creature | source_creature | enchanted_creature | triggering_creature
+   * (draw: nessun target in editor — scelta in partita)
    */
   target?: TargetOption;
 };

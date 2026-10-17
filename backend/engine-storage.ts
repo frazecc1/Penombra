@@ -67,6 +67,24 @@ function seedToCardData(c: {
   };
 }
 
+
+function forceDrawAnyPlayer(raw: CardEffectJson | null): CardEffectJson | null {
+  if (!raw) return raw;
+  const mapOne = (e: Record<string, unknown>) =>
+    e && e.type === 'draw' ? { ...e, target: 'any_player' } : e;
+  if (typeof raw === 'object' && raw !== null && 'effects' in raw && Array.isArray((raw as { effects: unknown }).effects)) {
+    const r = raw as { effects: Record<string, unknown>[]; reaction_trigger?: unknown };
+    return {
+      ...r,
+      effects: r.effects.map(mapOne),
+    } as CardEffectJson;
+  }
+  if (typeof raw === 'object' && raw !== null && (raw as { type?: string }).type === 'draw') {
+    return mapOne(raw as Record<string, unknown>) as CardEffectJson;
+  }
+  return raw;
+}
+
 /** Riga Supabase → CardData (abilities → effect_json via adapter). */
 function rowToCardData(row: Record<string, unknown>): CardData {
   const cardType = String(row.card_type) as CardType;
@@ -88,6 +106,9 @@ function rowToCardData(row: Record<string, unknown>): CardData {
       effect_on_death_json = adapted.effect_on_death_json as CardEffectJson | null;
     }
   }
+  // Sicurezza: ogni draw deve essere any_player (scelta in partita)
+  effect_json = forceDrawAnyPlayer(effect_json);
+  effect_on_death_json = forceDrawAnyPlayer(effect_on_death_json);
 
   return {
     id: String(row.id),
