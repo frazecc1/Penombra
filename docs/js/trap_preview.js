@@ -2,8 +2,7 @@
 // Usare insieme a js/game.js v4: il pulsante contiene data-instance-id.
 // La conferma richiama l'handler esistente: nessuna seconda finestra di gioco.
 import { getAccessToken } from './auth.js';
-
-const API = 'https://bellum-penumbrum-api.onrender.com';
+import { API } from './config.js';
 let preview = null;
 let confirmedClick = false;
 let loading = false;

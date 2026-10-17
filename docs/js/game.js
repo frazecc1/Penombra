@@ -2517,7 +2517,7 @@ function hideHome() {
 let priorMatch = null, probing = false;
 async function probePrior() {
   priorMatch = null;
-  // Preferisci last_match_id dal server (cross-device), fallback localStorage
+  // Preferisci last_match_id dal server, fallback localStorage
   let prior = null;
   try {
     const profile = await api('/me/profile');
@@ -2534,12 +2534,19 @@ async function probePrior() {
     if (result.state?.state_version === 4 && isMine && result.state.status !== 'finished') {
       priorMatch = { id: prior };
       try { localStorage.setItem('bellum:last-match', prior); } catch (_) { /* ignore */ }
-    } else if (result.state?.status === 'finished') {
-      // Pulisci last_match sul server se la partita è finita
+      return;
+    }
+    if (result.state?.status === 'finished') {
       void api('/me/profile', { method: 'PUT', body: { last_match_id: null } }).catch(() => {});
       try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
+      return;
     }
-  } catch (e) { console.warn('Ripristino non disponibile', e); }
+  } catch (e) {
+    // Lab: partita forse ancora in localStorage ma server ha riavviato (RAM vuota).
+    // Mostriamo comunque RIPRENDI: al click spieghiamo se non c’è più.
+    console.warn('Ripristino non verificato sul server', e);
+    priorMatch = { id: prior, unverified: true };
+  }
 }
 function startDialog() {
   let el = $('start-dialog'); if (el) return el;
@@ -3193,11 +3200,18 @@ async function recoverPrior() {
     matchId = id; state = result.state; flow = null; priorMatch = null; deathDraft = {choiceId:null,instanceIds:[]};
     localStorage.setItem('bellum:last-match',matchId); hideStart(); hideHome(); close(); closeGraveyard(); closeColorDialog();
   } catch(e) {
-    fail(e);
-    // Partita sparita (es. restart Render): pulisci e resta in Home
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn('recoverPrior', e);
     try { localStorage.removeItem('bellum:last-match'); } catch (_) {}
     priorMatch = null;
+    hideMatchLoading();
     showHome();
+    notice(
+      'Non posso riprendere quella partita.\n' +
+      'Su Render Free lo stato sta in memoria: se il server si è addormentato o riavviato, le spoglie sono perdute.\n' +
+      'Avvia una nuova Partita base.',
+      'error'
+    );
   }
   finally {
     hideMatchLoading();
