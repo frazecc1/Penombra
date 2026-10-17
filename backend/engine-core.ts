@@ -83,13 +83,23 @@ function medallionCreatureBonuses(s: GameState, p: PlayerIndex): { attack: numbe
 }
 function checkWinner(c: Context, reason: string) {
   if (c.s.status !== 'running') return;
-  const winner: PlayerIndex | null = c.s.players[0].life <= 0 ? 1 : c.s.players[1].life <= 0 ? 0 : null;
-  if (winner === null) return;
-  c.s.status = 'finished'; c.s.phase = 'end'; c.s.winner_index = winner;
+  const p0Dead = c.s.players[0].life <= 0;
+  const p1Dead = c.s.players[1].life <= 0;
+  if (!p0Dead && !p1Dead) return;
+  c.s.status = 'finished';
+  c.s.phase = 'end';
+  // Un solo vincitore se solo uno è a ≤ 0; entrambi perdenti se entrambi ≤ 0.
+  if (p0Dead && p1Dead) {
+    c.s.winner_index = null;
+    log(c, -1, 'match_end', `Entrambi sconfitti. ${reason}`);
+  } else {
+    const winner: PlayerIndex = p0Dead ? 1 : 0;
+    c.s.winner_index = winner;
+    log(c, winner, 'match_end', `${winner === 1 ? 'Hai vinto' : 'L’IA ha vinto'}. ${reason}`);
+  }
   delete c.s.pending_reaction; delete c.s.pending_mostrissimo; delete c.s.ai_progress;
   delete c.s.pending_death_order; delete c.s.pending_target_choice;
   c.s.work_queue = []; c.deaths = [];
-  log(c, winner, 'match_end', `${winner === 1 ? 'Hai vinto' : 'L’IA ha vinto'}. ${reason}`);
 }
 function draw(c: Context, p: PlayerIndex, count: number) {
   let taken = 0;

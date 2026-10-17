@@ -1148,15 +1148,77 @@ function clearMatchUI() {
   }
 }
 
-/** Gestisce fine partita (vittoria o sconfitta) da qualsiasi punto del flusso. */
+/** Popup perdente: messaggio secco + «Accetto il giudizio» → login. */
+function showLoserJudgment() {
+  return new Promise(resolve => {
+    let el = $('loser-judgment-dialog');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'loser-judgment-dialog';
+      el.className = 'card-detail-overlay';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.setAttribute('aria-labelledby', 'loser-judgment-title');
+      el.style.zIndex = '200';
+      el.innerHTML =
+        '<div class="panel" style="width:min(92vw,420px);text-align:center;border-color:#c6a774;box-shadow:0 12px 48px #000;padding:1.5rem">' +
+        '<h2 id="loser-judgment-title" style="margin:0 0 .75rem">Sei il perdente.</h2>' +
+        '<p class="muted" style="margin:0 0 1.25rem">La partita è finita.</p>' +
+        '<button type="button" class="primary-button" id="loser-judgment-accept">Accetto il giudizio</button>' +
+        '</div>';
+      document.body.append(el);
+    }
+    el.classList.remove('hidden');
+    const btn = $('loser-judgment-accept');
+    const done = () => {
+      el.classList.add('hidden');
+      if (btn) btn.onclick = null;
+      resolve();
+    };
+    if (btn) btn.onclick = done;
+  });
+}
+
+/** Camera di Vittoria V — placeholder; bottone → login. */
+function showVictoryChamber() {
+  return new Promise(resolve => {
+    let el = $('victory-chamber-dialog');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'victory-chamber-dialog';
+      el.className = 'card-detail-overlay';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.setAttribute('aria-labelledby', 'victory-chamber-title');
+      el.style.zIndex = '200';
+      el.innerHTML =
+        '<div class="panel" style="width:min(92vw,480px);text-align:center;border-color:#c6a774;box-shadow:0 12px 48px #000;padding:1.75rem">' +
+        '<p class="eyebrow" style="margin:0 0 .5rem;letter-spacing:.12em">PENOMBRA</p>' +
+        '<h2 id="victory-chamber-title" style="margin:0 0 .75rem">Camera di Vittoria V</h2>' +
+        '<p class="muted" style="margin:0 0 1.25rem">Placeholder. Qui arriveranno premi e contenuto.</p>' +
+        '<button type="button" class="primary-button" id="victory-chamber-leave">Torna al login</button>' +
+        '</div>';
+      document.body.append(el);
+    }
+    el.classList.remove('hidden');
+    const btn = $('victory-chamber-leave');
+    const done = () => {
+      el.classList.add('hidden');
+      if (btn) btn.onclick = null;
+      resolve();
+    };
+    if (btn) btn.onclick = done;
+  });
+}
+
+/** Gestisce fine partita (vittoria, sconfitta o doppia sconfitta). */
 async function handleMatchFinished() {
   if (!state || state.status !== 'finished') return;
+  // PvE: umano = indice 1. Vincitore solo se winner_index === 1; altrimenti perdente (anche se entrambi ≤ 0).
   const won = state.winner_index === 1;
 
   try { dismissNotice(); } catch (_) { /* ignore */ }
-  await notice(won ? 'HAI VINTO!' : 'HAI PERSO!', won ? 'success' : 'error');
 
-  // Penombra lab: fine partita → sempre Home (mai schermata login).
   clearMatchUI();
   try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
   matchId = null;
@@ -1164,11 +1226,18 @@ async function handleMatchFinished() {
   priorMatch = null;
   flow = null;
   busy = false;
+
+  try { hideHome(); } catch (_) { /* ignore */ }
   try {
-    document.getElementById('auth-screen')?.classList.add('hidden');
-    document.getElementById('game-screen')?.classList.remove('hidden');
+    document.getElementById('game-screen')?.classList.add('hidden');
   } catch (_) { /* ignore */ }
-  showHome();
+
+  if (won) {
+    await showVictoryChamber();
+  } else {
+    await showLoserJudgment();
+  }
+  showAuthScreen({ forceLoginForm: false });
 }
 async function renderReaction() {
   const el = reactionDialog(), r = reaction();
