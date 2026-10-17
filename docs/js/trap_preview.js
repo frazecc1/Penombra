@@ -3,6 +3,13 @@
 // La conferma richiama l'handler esistente: nessuna seconda finestra di gioco.
 import { getAccessToken } from './auth.js';
 import { API } from './config.js';
+
+// Lab: niente chiamate al backup. Se vedi bellum-penumbrum-api in Network, questo file non è aggiornato.
+if (typeof API === 'string' && API.includes('bellum-penumbrum-api')) {
+  console.error('[Penombra] trap_preview: API punta al BACKUP. Controlla docs/js/config.js');
+}
+console.info('[Penombra] trap_preview API =', API);
+
 let preview = null;
 let confirmedClick = false;
 let loading = false;
