@@ -1,146 +1,95 @@
 /**
  * effect-types.ts
- * Tipi TypeScript per il nuovo sistema di effetti e trigger atomici.
- * Da integrare nel backend (sostituisce/estende parti di types.ts).
+ * Sistema abilità a 2 pezzi: Trigger + Effetto (libreria ridotta).
  *
- * Fase 1 – Bellum Penumbrum
- * Data: 15 ottobre 2026
+ * Ogni abilità su una carta = { trigger_id, effect_id, amount?, target? }
  */
 
-// ---------------------------------------------------------------------------
-// Tipi di carta (già esistenti, qui per riferimento)
-// ---------------------------------------------------------------------------
 export type CardType =
   | 'monster'
   | 'mostrissimo'
   | 'maledizione'
-  | 'instant'      // Trappola
+  | 'instant' // Trappola
   | 'aura'
   | 'terraforma';
 
-// ---------------------------------------------------------------------------
-// Bersagli possibili (checklist multi-selezione nell'editor)
-// ---------------------------------------------------------------------------
+/** Bersagli ammessi nella libreria ridotta. */
 export type TargetOption =
-  | 'self'                        // il proprietario della carta
-  | 'opponent'                    // l'avversario
-  | 'own_creatures'               // creature proprie (Mostri + Mostrissimi)
-  | 'opponent_creatures'          // creature avversarie
-  | 'any_creature'                // qualsiasi creatura
-  | 'own_terraformas'             // Terraforme proprie
-  | 'opponent_terraformas'        // Terraforme avversarie
-  | 'any_terraforma'              // qualsiasi Terraforma
-  | 'own_auras'                   // Aure proprie
-  | 'opponent_auras'              // Aure avversarie
-  | 'any_aura'                    // qualsiasi Aura
-  | 'own_permanents'              // tutti i permanenti propri
-  | 'opponent_permanents'         // tutti i permanenti avversari
-  | 'any_permanent'               // qualsiasi permanente
-  | 'any_permanent_except_mostrissimo' // per return_hand
-  | 'source_creature'             // la creatura che ha generato l'effetto (ETB, attacco…)
-  | 'enchanted_creature'          // la creatura a cui è attaccata l'Aura
-  | 'triggering_creature'         // la creatura che ha scatenato il trigger
-  | 'any_target';                 // scelta libera del giocatore in partita (tra i legali)
-  ;
+  | 'self'
+  | 'opponent'
+  | 'any_creature'
+  | 'any_target' // in partita: scelta tra player avversario e creature legali
+  | 'source_creature' // la creatura che ha generato l’abilità (ETB di sé)
+  | 'enchanted_creature' // creatura a cui è attaccata l’Aura
+  | 'triggering_creature'; // creatura che ha scatenato on_ally_enters
 
 // ---------------------------------------------------------------------------
-// Parametri comuni degli effetti
+// Trigger (pezzo 1) — lista chiusa
 // ---------------------------------------------------------------------------
-export type EffectStat = 'attack' | 'hp';
-export type EffectDuration =
-  | 'permanent'
-  | 'turn'
-  | 'while_attached'
-  | 'while_in_play';
+export type TriggerId =
+  | 'on_enter'
+  | 'on_enchanted_attack'
+  | 'on_death'
+  | 'on_ally_enters'
+  | 'on_opponent_turn_end';
 
-// ---------------------------------------------------------------------------
-// Definizione di un Trigger atomico (pezzo della libreria)
-// ---------------------------------------------------------------------------
 export type TriggerDefinition = {
-  /** Identificativo univoco (es. "card_played_from_hand") */
-  id: string;
-  /** Nome leggibile in italiano */
+  id: TriggerId;
   name: string;
-  /** Descrizione per l'editor e la documentazione */
   description: string;
-  /** Tipi di carta su cui questo trigger può essere installato */
   allowed_card_types: CardType[];
-  /**
-   * Momento esatto di attivazione (testo libero + codice interno).
-   * Esempi: "after_mana_paid_before_resolution", "after_enters_field", "on_declare_attack"
-   */
-  timing: string;
-  /** Se true, può aprire una finestra di reazione (Trappole / effetti reattivi) */
+  /** Se true, apre finestra di reazione (Trappole). */
   is_reaction: boolean;
-  /** Se true, il trigger è "passivo continuo" (while_attached / while_in_play) */
-  is_continuous?: boolean;
 };
 
 // ---------------------------------------------------------------------------
-// Definizione di un Effetto atomico (pezzo della libreria)
+// Effetti (pezzo 2) — lista chiusa
 // ---------------------------------------------------------------------------
+export type EffectId =
+  | 'draw'
+  | 'opponent_discard'
+  | 'heal_self'
+  | 'damage'
+  | 'buff_creature';
+
 export type EffectDefinitionAtomic = {
-  /** Identificativo univoco (es. "damage") */
-  id: string;
-  /** Nome leggibile */
+  id: EffectId;
   name: string;
-  /** Descrizione */
   description: string;
-  /** Tipi di carta su cui questo effetto può essere installato */
   allowed_card_types: CardType[];
-  /** Parametri che l'autore della carta può configurare */
-  parameters: {
-    amount?: boolean;          // quantità numerica (0-20)
-    keep?: boolean;            // per discard: tieni N carte
-    stat?: boolean;            // attack | hp
-    duration?: boolean;        // permanent | turn | while_attached | while_in_play
-  };
-  /** Bersagli che l'autore può abilitare (checklist) */
+  /** amount sempre richiesto (1–20). */
+  needs_amount: true;
+  /**
+   * Bersagli che l’autore può scegliere in editor.
+   * Se vuoto, il target è fisso nell’effetto (es. heal_self → self).
+   */
   possible_targets: TargetOption[];
-  /** Se true, in partita il giocatore deve scegliere un bersaglio */
+  /** Se true, in partita può servire una scelta di bersaglio. */
   requires_target_choice: boolean;
-  /** Se true, questo effetto è un NOPE / counter */
-  is_counter?: boolean;
 };
 
 // ---------------------------------------------------------------------------
-// Istanza di un effetto su una carta concreta (quello che viene salvato in effect_json)
+// Istanza su carta (salvata in abilities jsonb)
 // ---------------------------------------------------------------------------
-export type CardEffectInstance = {
-  /** Riferimento all'effetto atomico */
-  effect_id: string;
-  /** Quantità (se prevista) */
-  amount?: number;
-  /** Per discard: scarta tutta la mano tranne N */
-  keep?: number;
-  /** Stat da modificare (buff) */
-  stat?: EffectStat;
-  /** Durata del buff */
-  duration?: EffectDuration;
-  /** Bersagli abilitati dall'autore della carta (sottoinsieme di possible_targets) */
-  allowed_targets: TargetOption[];
-  /** Trigger a cui è collegato questo effetto (opzionale) */
-  trigger_id?: string;
-  /** Filtro opzionale (sottotipo / fazione) – usato soprattutto da Terraforme e buff continui */
-  filter?: {
-    subtype?: string;
-    faction?: string;
-  };
+export type Ability = {
+  trigger_id: TriggerId;
+  effect_id: EffectId;
+  /** Quantità 1–20 (obbligatoria per tutti gli effetti attuali). */
+  amount: number;
+  /**
+   * Obbligatorio se l’effetto non ha target fisso:
+   * - draw → self | opponent
+   * - damage → self | opponent | any_creature | any_target
+   * - buff_creature → any_creature | source_creature | enchanted_creature | triggering_creature
+   */
+  target?: TargetOption;
 };
 
-// ---------------------------------------------------------------------------
-// Forma completa di effect_json / effect_on_death_json su una carta
-// ---------------------------------------------------------------------------
-export type CardEffectsPayload = {
-  effects: CardEffectInstance[];
-  /** Solo per le Trappole: trigger di reazione principale */
-  reaction_trigger_id?: string;
+export type CardAbilitiesPayload = {
+  abilities: Ability[];
 };
 
-// ---------------------------------------------------------------------------
-// Libreria completa (caricata una sola volta)
-// ---------------------------------------------------------------------------
 export type EffectLibrary = {
-  triggers: Record<string, TriggerDefinition>;
-  effects: Record<string, EffectDefinitionAtomic>;
+  triggers: Record<TriggerId, TriggerDefinition>;
+  effects: Record<EffectId, EffectDefinitionAtomic>;
 };
