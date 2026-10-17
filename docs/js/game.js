@@ -1156,7 +1156,7 @@ async function handleMatchFinished() {
   try { dismissNotice(); } catch (_) { /* ignore */ }
   await notice(won ? 'HAI VINTO!' : 'HAI PERSO!', won ? 'success' : 'error');
 
-  // Penombra lab: qualsiasi fine partita torna alla Home (niente progressi Storia/Endless).
+  // Penombra lab: fine partita → sempre Home (mai schermata login).
   clearMatchUI();
   try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
   matchId = null;
@@ -1164,6 +1164,10 @@ async function handleMatchFinished() {
   priorMatch = null;
   flow = null;
   busy = false;
+  try {
+    document.getElementById('auth-screen')?.classList.add('hidden');
+    document.getElementById('game-screen')?.classList.remove('hidden');
+  } catch (_) { /* ignore */ }
   showHome();
 }
 async function renderReaction() {
@@ -2166,7 +2170,7 @@ async function showAnimaScene() {
   el.classList.add('hidden');
   el.style.display = 'none';
   hideHome();
-  showMatchLoading('Il patto si sta sigillando…');
+  showMatchLoading('…');
   // Avvia partita con tertiary già scelto (coerente con il messaggio); maledizione già mostrata
   await newMatch(primary, secondary, {
     isNewStory: currentMode === 'story',
@@ -3322,9 +3326,9 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
   hideStart();
   try { hideStoryStart(); } catch (_) {}
   try { hideEndlessStart(); } catch (_) {}
-  showMatchLoading('Il patto si sta sigillando…\n(se è la prima volta può richiedere un minuto)');
+  showMatchLoading('…');
   if ($('deck-color-confirm')) $('deck-color-confirm').disabled = true;
-  if ($('deck-color-validation')) $('deck-color-validation').textContent = 'Il patto si sta sigillando…';
+  if ($('deck-color-validation')) $('deck-color-validation').textContent = '';
   try {
     // Body base +, in Storia: vita boss, Medaglione, terziario stabile, colore del boss IA
     const createBody = { primaryColor, secondaryColor };
@@ -3943,9 +3947,13 @@ async function handlePvpFinished() {
   await showPvpResultPopup(title);
   matchId = null;
   state = null;
-  currentMode = 'story';
+  currentMode = 'base';
   try { localStorage.removeItem('bellum:last-match'); } catch (_) {}
-  showAuthScreen({ forceLoginForm: false });
+  try {
+    document.getElementById('auth-screen')?.classList.add('hidden');
+    document.getElementById('game-screen')?.classList.remove('hidden');
+  } catch (_) {}
+  showHome();
 }
 
 function showPvpResultPopup(title) {
