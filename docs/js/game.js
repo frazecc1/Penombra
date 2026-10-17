@@ -729,6 +729,64 @@ function choiceDialog() {
   // Nessun click sullo sfondo o Escape può annullare una scelta obbligatoria.
   return el;
 }
+
+/** Popup: chi pesca X carte? (Tu / avversario). */
+function showDrawPlayerChoice(choiceId, amount, eligibleIds) {
+  try { dismissNotice(); } catch (_) { /* ignore */ }
+  const foeName = (typeof opponentDisplayName === 'function' ? opponentDisplayName() : null) || 'Avversario';
+  const n = Math.max(1, Number(amount) || 1);
+  return new Promise(resolve => {
+    let el = $('draw-player-choice-dialog');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'draw-player-choice-dialog';
+      el.className = 'card-detail-overlay';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.style.zIndex = '160';
+      stageRoot().append(el);
+    }
+    el.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.style.cssText = 'width:min(92vw,400px);margin:auto;padding:1.3rem 1.2rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
+    const text = document.createElement('p');
+    text.style.cssText = 'margin:0 0 1.1rem;line-height:1.45;font-size:1.08rem;';
+    text.textContent = `Chi vuoi che peschi ${n} cart${n === 1 ? 'a' : 'e'}?`;
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap';
+    const makeBtn = (label, targetId) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'primary-button';
+      b.textContent = label;
+      b.onclick = async () => {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+        try {
+          await request('death/target', { choiceId, targetInstanceId: targetId }, 'Pesca risolta.');
+        } catch (e) { fail(e); }
+        resolve();
+      };
+      return b;
+    };
+    // eligible: player:1 = tu, player:0 = avversario (in PvE)
+    if ((eligibleIds || []).includes('player:1')) actions.append(makeBtn('Tu', 'player:1'));
+    if ((eligibleIds || []).includes('player:0')) actions.append(makeBtn(foeName, 'player:0'));
+    // fallback se ids diversi
+    if (!actions.childElementCount) {
+      for (const id of eligibleIds || []) {
+        const label = id === 'player:1' ? 'Tu' : id === 'player:0' ? foeName : id;
+        actions.append(makeBtn(label, id));
+      }
+    }
+    panel.append(text, actions);
+    el.append(panel);
+    el.classList.remove('hidden');
+    el.style.display = '';
+  });
+}
+
 async function renderDeathChoice() {
   const el = choiceDialog(), order = deathOrder(), selected = deathTarget();
   if (!state || state.status !== 'running' || busy || (!order && !selected)) { el.classList.add('hidden'); return; }
@@ -770,6 +828,24 @@ async function renderDeathChoice() {
     const src = selected.task?.source;
     // on_play / terraforma / aura → scelta sulla griglia (creatura già in campo).
     // Solo on_death resta nel dialogo a lista, con testo corretto «alla morte».
+    const eligibleIds = selected.eligible_instance_ids ?? [];
+    const playerOnly = eligibleIds.length > 0 && eligibleIds.every(id => String(id).startsWith('player:'));
+    if (playerOnly) {
+      el.classList.add('hidden');
+      if (busy || deathTarget()?.choice_id !== selected.choice_id) return;
+      if (flow?.kind === 'draw-player' && flow.choiceId === selected.choice_id) return;
+      flow = { kind: 'draw-player', choiceId: selected.choice_id };
+      const amt = selected.task?.amount; // may be undefined
+      let amount = 1;
+      try {
+        const d = await card(selected.task?.card_id);
+        const list = d?.effect_json?.effects || (d?.effect_json?.type ? [d.effect_json] : []);
+        const fx = list[selected.task?.effect_index ?? 0];
+        if (fx?.amount != null) amount = Number(fx.amount) || 1;
+      } catch (_) { /* ignore */ }
+      await showDrawPlayerChoice(selected.choice_id, amount, eligibleIds);
+      return;
+    }
     const useBoardPick = src === 'on_play' || src === 'terraforma_trigger' || src === 'aura_attack' || !src;
     if (useBoardPick) {
       el.classList.add('hidden');
@@ -777,7 +853,7 @@ async function renderDeathChoice() {
       flow = {
         kind: 'etb-target',
         choiceId: selected.choice_id,
-        eligible: selected.eligible_instance_ids ?? [],
+        eligible: eligibleIds,
         sourceId: selected.task?.source_instance_id,
       };
       try { dismissNotice(); } catch (_) { /* ignore */ }

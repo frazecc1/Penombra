@@ -146,6 +146,9 @@ export function targetChoices(s: GameState, owner: PlayerIndex, e: EffectDefinit
 
 export function validTarget(s: GameState, owner: PlayerIndex, e: EffectDefinition, id: string | null) {
   if (!id) return false;
+  if (e.type === 'draw' && e.target === 'any_player') {
+    return id === playerTargetId(owner) || id === playerTargetId(other(owner));
+  }
   if (isDamage(e) && e.target === 'any_target' && id === playerTargetId(other(owner))) return true;
   if (e.type === 'return_hand' || e.type === 'destroy') {
     return !!findPermanent(s, id);

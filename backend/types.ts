@@ -28,7 +28,7 @@ export type EffectType =
 export type EffectTarget =
   | 'self' | 'opponent' | 'any_creature' | 'enchanted_creature'
   | 'all_creatures' | 'all_creatures_self' | 'all_creatures_opponent'
-  | 'spell' | 'event' | 'triggering_creature' | 'any_target' | 'source_creature';
+  | 'spell' | 'event' | 'triggering_creature' | 'any_target' | 'source_creature' | 'any_player';
 
 export type ReactionTriggerEvent =
   | 'opponent_upkeep_start'

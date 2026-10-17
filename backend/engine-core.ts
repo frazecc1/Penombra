@@ -274,7 +274,15 @@ async function applyEffect(c: Context, task: ResolveEffectWork) {
     log(c, p, 'effect_no_target', `${d.name}: bersaglio non più valido, effetto annullato.`, { card_id: d.id }); return;
   }
   if (e.type === 'draw') {
-    const recipient = e.target === 'opponent' ? foe : p;
+    let recipient: PlayerIndex = e.target === 'opponent' ? foe : p;
+    if (e.target === 'any_player' && task.target_instance_id) {
+      if (task.target_instance_id === playerTargetId(0)) recipient = 0;
+      else if (task.target_instance_id === playerTargetId(1)) recipient = 1;
+      else {
+        log(c, p, 'effect_no_target', `${d.name}: giocatore bersaglio non valido, effetto annullato.`, { card_id: d.id });
+        return;
+      }
+    }
     const count = draw(c, recipient, n);
     log(c, p, 'effect_draw', `${d.name}: ${who(s, recipient)} pesca ${count} carta/e.`, { amount: count });
   } else if (e.type === 'discard') {
@@ -390,7 +398,7 @@ async function applyEffect(c: Context, task: ResolveEffectWork) {
 async function resolveEffectOrChoose(c: Context, task: ResolveEffectWork) {
   // on_play = ETB dopo l’ingresso: la creatura è già in campo e può essere scelta (anche se stessa).
   const interactive = task.source === 'on_death' || task.source === 'terraforma_trigger'
-    || task.source === 'aura_attack' || task.source === 'on_play';
+    || task.source === 'aura_attack' || task.source === 'on_play' || task.source === 'trap';
   if (interactive && task.target_instance_id === null) {
     const d = await getCardData(task.card_id);
     const fx = effects(task.source === 'on_death' ? d.effect_on_death_json : d.effect_json)[task.effect_index];
@@ -409,6 +417,7 @@ async function resolveEffectOrChoose(c: Context, task: ResolveEffectWork) {
           && task.source_instance_id && choices.includes(task.source_instance_id)) {
           picked = task.source_instance_id;
         } else if (fx.target === 'any_target') picked = aiDamageTarget(c.s, Number(fx.amount ?? 1)) ?? undefined;
+        else if (fx.type === 'draw' && fx.target === 'any_player') picked = playerTargetId(task.owner);
         else {
           const options = eligible(c.s, task.owner, fx);
           const preferred = fx.type === 'heal' || fx.type === 'buff'

@@ -41,7 +41,7 @@ const PERMANENT_TARGETS = [
   'any_target',
 ];
 const TARGETS = new Map<string, string[]>([
-  ['draw', ['self', 'opponent']],
+  ['draw', ['self', 'opponent', 'any_player']],
   ['discard', ['self', 'opponent']],
   ['heal', ['self', 'opponent', ...CREATURE_TARGETS]],
   // any_target: a scelta del proprietario, il giocatore avversario o una creatura (alleata o nemica).
@@ -103,7 +103,8 @@ function effectErrors(e: Json, type: string, trigger: unknown, death = false): s
     if (!CARD_TRIGGERS[type]?.includes(String(e.trigger)))
       out.push(type === 'aura' ? 'Le Aure usano il trigger "quando la creatura attacca".' : type === 'terraforma' ? 'Le Terraforme usano i trigger "evochi una creatura", "inizia il tuo turno" o "una tua creatura muore".' : 'I trigger valgono solo per Aure e Terraforme.');
     else if (!Number.isInteger(amount)) out.push('Serve la quantità.');
-    else if (t === 'heal' || t === 'draw') { if (e.target !== 'self') out.push(`${t}: con un trigger il bersaglio è il proprietario.`); }
+    else if (t === 'heal') { if (e.target !== 'self') out.push(`${t}: con un trigger il bersaglio è il proprietario.`); }
+    else if (t === 'draw' && e.target && e.target !== 'self' && e.target !== 'opponent' && e.target !== 'any_player') out.push('draw: target self, opponent o any_player.');
     else if (t === 'discard') { if (e.target !== 'opponent') out.push('Scarta: con un trigger scarta l\'avversario.'); }
     else if (t === 'damage') { if (e.target !== 'any_target' && e.target !== 'opponent') out.push('Danno: con un trigger il bersaglio è l\'avversario o a scelta.'); }
     else if (t === 'buff') {
@@ -125,7 +126,7 @@ function effectErrors(e: Json, type: string, trigger: unknown, death = false): s
   if (!allowed) { out.push(`Effetto "${String(e.type)}" non supportato dal motore.`); return out; }
   if (type === 'aura' && t !== 'buff' && t !== 'movement_cost') out.push('Le Aure ammettono solo bonus o movimento a costo 0.');
   if (type === 'terraforma' && t !== 'buff') out.push('Le Terraforme ammettono solo bonus.');
-  const target = (e.target as string | undefined) ?? (t === 'draw' ? 'self' : t === 'discard' ? 'opponent' : null);
+  const target = (e.target as string | undefined) ?? (t === 'draw' ? 'any_player' : t === 'discard' ? 'opponent' : null);
   if (target && !allowed.includes(target)) out.push(`${t}: il bersaglio "${target}" blocca la partita.`);
   out.push(...filterErrors(e, type, t));
   if (t === 'buff') {

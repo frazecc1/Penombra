@@ -53,7 +53,7 @@ function toLegacyEffects(ability: Ability): LegacyEffect[] {
   const n = ability.amount;
   switch (ability.effect_id) {
     case 'draw':
-      return [{ type: 'draw', amount: n, target: mapTarget(ability.target, 'self') }];
+      return [{ type: 'draw', amount: n, target: 'any_player' }];
     case 'opponent_discard':
       return [{ type: 'discard', amount: n, target: 'opponent' }];
     case 'heal_self':
@@ -152,7 +152,7 @@ export function abilityToText(ability: Ability): string {
     on_opponent_turn_end: 'A fine turno avversario',
   };
   const what: Record<string, string> = {
-    draw: `pesca ${ability.amount}`,
+    draw: `un giocatore pesca ${ability.amount}`,
     opponent_discard: `l’avversario scarta ${ability.amount}`,
     heal_self: `cura ${ability.amount} PV a te`,
     damage: `${ability.amount} danno/i`,

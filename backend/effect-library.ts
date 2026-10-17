@@ -74,11 +74,11 @@ const EFFECTS: Record<EffectId, EffectDefinitionAtomic> = {
   draw: {
     id: 'draw',
     name: 'Pesca',
-    description: 'Il giocatore bersaglio pesca un numero di carte.',
+    description: 'In partita scegli quale giocatore pesca (tu o avversario).',
     allowed_card_types: ALL_TYPES,
     needs_amount: true,
-    possible_targets: ['self', 'opponent'],
-    requires_target_choice: false,
+    possible_targets: [], // scelta in partita: any_player
+    requires_target_choice: true,
   },
 
   opponent_discard: {
