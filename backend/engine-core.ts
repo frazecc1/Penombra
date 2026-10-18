@@ -275,14 +275,21 @@ async function applyEffect(c: Context, task: ResolveEffectWork) {
     log(c, p, 'effect_no_target', `${d.name}: bersaglio non più valido, effetto annullato.`, { card_id: d.id }); return;
   }
   if (e.type === 'draw') {
-    let recipient: PlayerIndex = e.target === 'opponent' ? foe : p;
-    if (e.target === 'any_player' && task.target_instance_id) {
+    let recipient: PlayerIndex;
+    if (e.target === 'any_player' || (e.type === 'draw' && e.target !== 'self' && e.target !== 'opponent')) {
+      // Scelta obbligatoria in partita — mai default su di te
+      if (!task.target_instance_id) {
+        log(c, p, 'effect_no_target', `${d.name}: manca la scelta del giocatore che pesca.`, { card_id: d.id });
+        return;
+      }
       if (task.target_instance_id === playerTargetId(0)) recipient = 0;
       else if (task.target_instance_id === playerTargetId(1)) recipient = 1;
       else {
         log(c, p, 'effect_no_target', `${d.name}: giocatore bersaglio non valido, effetto annullato.`, { card_id: d.id });
         return;
       }
+    } else {
+      recipient = e.target === 'opponent' ? foe : p;
     }
     const count = draw(c, recipient, n);
     log(c, p, 'effect_draw', `${d.name}: ${who(s, recipient)} pesca ${count} carta/e.`, { amount: count });

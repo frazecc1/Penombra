@@ -24,6 +24,7 @@ export const reactionTrigger = (d: CardData): ReactionTriggerEvent | undefined =
 export const targeted = (e: EffectDefinition) =>
   e.target === 'any_creature' ||
   e.target === 'any_target' ||
+  e.target === 'any_player' ||
   e.type === 'return_hand' ||
   e.type === 'destroy';
 
@@ -135,6 +136,10 @@ const isDamage = (e: EffectDefinition) => e.type === 'damage' || e.type === 'dam
  * - return_hand / destroy: tutti i permanenti eleggibili (filtrati poi in validTarget / applyEffect)
  */
 export function targetChoices(s: GameState, owner: PlayerIndex, e: EffectDefinition): string[] {
+  // Pesca: scelta tra te e l'avversario (popup lato client).
+  if (e.type === 'draw' && (e.target === 'any_player' || !e.target)) {
+    return [playerTargetId(owner), playerTargetId(other(owner))];
+  }
   if (e.type === 'return_hand' || e.type === 'destroy') {
     // Restituiamo tutti i permanenti; il filtro Mostrissimo per return_hand avviene in validTarget/applyEffect
     // (serve getCardData, quindi non puro). Qui restituiamo gli id disponibili.
