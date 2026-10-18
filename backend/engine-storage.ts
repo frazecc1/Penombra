@@ -237,11 +237,115 @@ export function getCatalogSource() {
 }
 
 // ---------------------------------------------------------------------------
-// Partite in memoria
+// Partite in memoria + persistenza Supabase (recupero spoglie)
 // ---------------------------------------------------------------------------
 
+/**
+ * Schema atteso (SQL Editor Supabase):
+ *
+ * create table if not exists public.matches (
+ *   id uuid primary key,
+ *   player_id uuid not null,
+ *   opponent_type text default 'ai',
+ *   opponent_name text,
+ *   status text not null default 'running',
+ *   state_json jsonb not null,
+ *   state_revision int not null default 0,
+ *   created_at timestamptz default now(),
+ *   updated_at timestamptz default now()
+ * );
+ * create index if not exists matches_player_status on public.matches(player_id, status);
+ *
+ * RLS: service role only (il backend usa SUPABASE_SERVICE_KEY).
+ */
+
+function humanPlayerId(s: GameState): string | null {
+  // In PvE l'umano è index 1; in PvP entrambi hanno user_id.
+  const p1 = s.players?.[1]?.user_id;
+  const p0 = s.players?.[0]?.user_id;
+  if (p1) return p1;
+  if (p0) return p0;
+  return null;
+}
+
+function isMissingMatchesTable(message: string): boolean {
+  const m = (message || '').toLowerCase();
+  return (
+    m.includes('schema cache') ||
+    m.includes('does not exist') ||
+    m.includes('could not find the table') ||
+    m.includes('matches')
+  );
+}
+
+/** Scrive (o aggiorna) lo stato su Supabase. Non blocca se la tabella manca. */
+async function persistMatch(id: string, s: GameState): Promise<void> {
+  if (!supabase) return;
+  const playerId = humanPlayerId(s);
+  if (!playerId) {
+    console.warn('[penombra] persistMatch: nessun player_id, skip DB');
+    return;
+  }
+  const isPvp = (s as GameState & { match_mode?: string }).match_mode === 'pvp';
+  const row = {
+    id,
+    player_id: playerId,
+    opponent_type: isPvp ? 'pvp' : 'ai',
+    opponent_name: isPvp
+      ? (s.players[0]?.user_id === playerId ? s.players[1]?.user_id : s.players[0]?.user_id) ?? null
+      : 'Mummy',
+    status: s.status ?? 'running',
+    state_json: s,
+    state_revision: s.state_revision ?? 0,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from('matches').upsert(row, { onConflict: 'id' });
+  if (error) {
+    if (isMissingMatchesTable(error.message)) {
+      console.warn('[penombra] tabella matches assente: partite solo in RAM (crea la tabella per recuperare le spoglie)');
+      return;
+    }
+    console.error('[penombra] persistMatch fallito:', error.message);
+  }
+}
+
+/** Carica stato da Supabase se non è in RAM. */
+async function loadFromDb(id: string): Promise<GameState | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('matches')
+    .select('state_json, status, state_revision')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) {
+    if (isMissingMatchesTable(error.message)) {
+      console.warn('[penombra] tabella matches assente: impossibile recuperare da DB');
+      return null;
+    }
+    console.error('[penombra] loadFromDb:', error.message);
+    return null;
+  }
+  if (!data?.state_json) return null;
+  const s = data.state_json as GameState;
+  if (s.state_version !== 4 || !s.board?.rows || !Array.isArray(s.work_queue)) {
+    throw new Error('Partita non compatibile: avvia una nuova partita.');
+  }
+  // Allinea status se il DB ha un valore più recente
+  if (data.status && s.status !== data.status) s.status = data.status as GameState['status'];
+  return structuredClone(s);
+}
+
 export async function load(id: string): Promise<GameState> {
-  const s = matches.get(id);
+  let s = matches.get(id);
+  if (!s) {
+    const fromDb = await loadFromDb(id);
+    if (fromDb) {
+      matches.set(id, fromDb);
+      if (!logsByMatch.has(id)) logsByMatch.set(id, []);
+      s = fromDb;
+      console.info(`[penombra] partita ${id.slice(0, 8)}… ripristinata da Supabase (rev ${fromDb.state_revision})`);
+    }
+  }
   if (!s) throw new Error(`Stato partita non trovato: ${id}`);
   if (s.state_version !== 4 || !s.board?.rows || !Array.isArray(s.work_queue))
     throw new Error('Partita non compatibile: avvia una nuova partita.');
@@ -263,12 +367,18 @@ export async function commit(id: string, s: GameState, logs: MatchLogEntry[]): P
     } as MatchLogEntry);
   }
   logsByMatch.set(id, bag);
+  // Persistenza best-effort: non fallire la mossa se Supabase è lento/assente
+  void persistMatch(id, next).catch(err => console.error('[penombra] commit persist:', err));
   return structuredClone(next);
 }
 
 export async function saveGameState(id: string, s: GameState): Promise<void> {
-  matches.set(id, structuredClone(s));
+  const copy = structuredClone(s);
+  matches.set(id, copy);
   if (!logsByMatch.has(id)) logsByMatch.set(id, []);
+  // Alla creazione (e ai salvataggi diretti) aspettiamo la scrittura così
+  // last_match_id punta già a uno stato recuperabile.
+  await persistMatch(id, copy);
 }
 
 export async function logMatchAction(id: string, entry: MatchLogEntry): Promise<void> {

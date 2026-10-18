@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v2-draw-choice',
+  version: 'v6-match-persist',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -3370,7 +3370,7 @@ async function recoverPrior() {
     showHome();
     notice(
       'Non posso riprendere quella partita.\n' +
-      'Su Render Free lo stato sta in memoria: se il server si è addormentato o riavviato, le spoglie sono perdute.\n' +
+      'Lo stato non è più disponibile sul server (partita scaduta, già finita, o tabella matches assente).\n' +
       'Avvia una nuova Partita base.',
       'error'
     );

@@ -83,7 +83,7 @@ Debug: `window.__penombraDebug` (versione, carta, `pendingTarget`).
 | `engine-core.ts` | Motore: eventi, effetti, turni, IA, win |
 | `engine-board.ts` | Plancia, adiacenze, `targeted` / `targetChoices` |
 | `engine-deck.ts` | Pool carte, costruzione mazzo 3 colori, boss |
-| `engine-storage.ts` | Load carte Supabase, cache, partite `Map` in RAM |
+| `engine-storage.ts` | Catalogo Supabase + partite Map in RAM **e** persistenza su `matches.state_json` |
 | `abilities-adapter.ts` | `abilities[]` → `effect_json` legacy |
 | `effect-library.ts` | Definizioni trigger/effetti ammessi |
 | `card-rules.ts` | Validazione statica carta |
@@ -98,7 +98,7 @@ Debug: `window.__penombraDebug` (versione, carta, `pendingTarget`).
 - Code: `work_queue`, `pending_reaction`, `pending_target_choice`, `pending_death_order`.  
 - Annunci pubblici per il client: `public_announcement` (+ lista se multipli).
 
-**Persistenza:** solo memoria processo. Sleep/restart Render = partite perse.
+**Persistenza:** memoria processo + tabella Supabase `matches` (`state_json`). Al cold start si ripristina da DB.
 
 ### 3.3 Ciclo di una mossa
 
@@ -152,6 +152,16 @@ Debug: `window.__penombraDebug` (versione, carta, `pendingTarget`).
 - Un solo vincitore se l’altro ha vita > 0.  
 - Entrambi a 0 → due perdenti (`winner_index` null).  
 - Client: messaggio e ritorno home (lab).
+
+### 3.7 Recupero spoglie
+
+1. `saveGameState` / `commit` scrivono `state_json` su `public.matches`.
+2. `load(id)`: se non in Map → `SELECT state_json FROM matches WHERE id = $1` → rimette in RAM.
+3. Profilo: `player_profiles.last_match_id` punta all’ultima partita aperta.
+4. Client: dialog «RIPRENDI le tue spoglie» (`probePrior` / `recoverPrior` in `game.js`).
+
+Senza tabella `matches` il backend logga un warning e resta in modalità solo-RAM (compatibile con il lab precedente).
+
 
 ---
 
@@ -238,7 +248,7 @@ Dettaglio body e errori: vedere `api.ts`.
 
 ## 8. Limiti attuali del lab
 
-- Partite non persistenti su DB.  
+- Partite persistenti su Supabase (`matches`); senza tabella si degrada a sola RAM.  
 - Storia / Endless / PvP non sono il focus del lab (codice presente in parte).  
 - Libreria effetti **ridotta** (5+5); niente destroy/return_hand/NOPE nel set lab minimo (il motore può ancora supportarne alcuni dal legacy).  
 - `on_ally_enters` mappato su trigger mostro alleato (allineamento Mostrissimo da curare se serve).  
@@ -260,4 +270,4 @@ Dettaglio body e errori: vedere `api.ts`.
 
 ---
 
-*Documento allineato al lab Penombra (catalogo Supabase, abilità a 2 pezzi, fix pesca v3–v5).*
+*Documento allineato al lab Penombra (catalogo Supabase, abilità a 2 pezzi, persistenza partite v6).*

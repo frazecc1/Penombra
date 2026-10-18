@@ -126,7 +126,8 @@ Frontend: apri `docs/` con un server statico oppure punta GitHub Pages; in `docs
 4. Camera di dialogo (placeholder)  
 5. Partita: griglia 3×3, mana, mano, trappole, fine partita  
 
-Stato partita **in memoria** sul server Render (su piano free si perde al sleep/riavvio).
+Stato partita **in memoria + Supabase** (`matches.state_json`).  
+Su Render Free la RAM si azzera al sleep, ma le partite non terminate si recuperano da DB («RIPRENDI le tue spoglie»).
 
 ---
 
@@ -138,9 +139,40 @@ GET /health
 ```
 
 `catalog`: `supabase` | `seed` | `mixed`  
-`build`: etichetta deploy (es. `v5-draw-choice`)
+`build`: etichetta deploy (es. `v6-match-persist`)
 
 ---
+
+
+---
+
+## Recupero partite («le spoglie»)
+
+1. Alla creazione e a ogni mossa lo stato completo viene scritto in `public.matches` (colonna `state_json`).
+2. Il profilo utente tiene `last_match_id`.
+3. All’apertura del sito il client chiama `/me/profile` e prova `GET /match/:id`.
+4. Se il server ha perso la RAM (cold start), `load()` ripristina lo stato da Supabase.
+
+### SQL da eseguire una volta (SQL Editor Supabase)
+
+```sql
+create table if not exists public.matches (
+  id uuid primary key,
+  player_id uuid not null,
+  opponent_type text default 'ai',
+  opponent_name text,
+  status text not null default 'running',
+  state_json jsonb not null,
+  state_revision int not null default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists matches_player_status on public.matches(player_id, status);
+```
+
+Il backend usa la **service role**: non serve RLS per il lab (o disabilita RLS su `matches`).
+
+Senza questa tabella il gioco funziona ancora, ma le spoglie restano solo in RAM (comportamento precedente).
 
 ## Deploy
 
