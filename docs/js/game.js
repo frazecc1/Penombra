@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v6-match-persist',
+  version: 'v7-recover-ui',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -2621,9 +2621,9 @@ function homeDialog() {
   // 4ª piramide: Partita base (lab). In produzione nascondere con SHOW_BASE_MATCH_PYRAMID=false.
   const baseBtn = makePyramid('home-base', 'Partita base', false, () => {
     currentMode = 'base';
-    hideStart();
     hideStoryStart();
-    openColorDialog();
+    // Sempre passa da startScreen: probe last_match + dialog RIPRENDI / nuovo inizio
+    startScreen().catch(fail);
   }, null);
   if (!SHOW_BASE_MATCH_PYRAMID) {
     baseBtn.classList.add('hidden');
@@ -2725,15 +2725,26 @@ function startDialog() {
   return el;
 }
 function showStart() {
-  if (state || busy) return;
+  if (state || busy) {
+    console.info('[penombra] showStart skip', { hasState: !!state, busy });
+    return;
+  }
   if ($('anima-scene') && !$('anima-scene').classList.contains('hidden')) return;
-  const el = startDialog(), has = !!priorMatch;
-  $('start-recover-button').classList.toggle('hidden',!has);
-  $('start-new-button').className = has ? 'secondary-button' : 'primary-button';
-  $('start-text').textContent = has
-    ? 'Un’ombra precedente ti attende. Vuoi riprendere le tue spoglie o abbracciare un nuovo inizio?'
-    : 'Nessuna spoglia da recuperare. Puoi solo abbracciare un nuovo inizio.';
+  const el = startDialog();
+  const has = !!priorMatch;
+  const recover = $('start-recover-button');
+  const fresh = $('start-new-button');
+  const text = $('start-text');
+  if (recover) recover.classList.toggle('hidden', !has);
+  if (fresh) fresh.className = has ? 'secondary-button' : 'primary-button';
+  if (text) {
+    text.textContent = has
+      ? 'Un’ombra precedente ti attende. Vuoi riprendere le tue spoglie o abbracciare un nuovo inizio?'
+      : 'Nessuna spoglia da recuperare. Puoi solo abbracciare un nuovo inizio.';
+  }
+  // Dialog sopra la Home (z-index 320); non nascondere la Home per non perdere il contesto
   el.classList.remove('hidden');
+  console.info('[penombra] showStart', { hasPrior: has, priorId: priorMatch?.id ?? null });
 }
 function hideStart() { $('start-dialog')?.classList.add('hidden'); }
 async function startScreen() {
@@ -4190,18 +4201,11 @@ function showPvpResultPopup(title) {
 
 
 window.addEventListener('bellum:auth-ready', () => {
-  // Home subito (niente griglia vuota), poi probe partita da riprendere
+  // Home subito (niente griglia vuota), poi sempre startScreen (probe + dialog RIPRENDI/nuovo)
   try { showHome(); } catch (_) { /* ignore */ }
   init()
     .then(() => claimDeviceAndSync().catch(() => {}))
-    .then(async () => {
-      try { await probePrior(); } catch (_) { /* ignore */ }
-      if (priorMatch) {
-        showStart(); // dialog RIPRENDI sopra la Home (z-index alto)
-      } else {
-        showHome();
-      }
-    })
+    .then(() => startScreen().catch(fail))
     .catch(fail);
 });
 

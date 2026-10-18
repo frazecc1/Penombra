@@ -139,7 +139,7 @@ GET /health
 ```
 
 `catalog`: `supabase` | `seed` | `mixed`  
-`build`: etichetta deploy (es. `v6-match-persist`)
+`build`: etichetta deploy (es. `v7-recover-ui`)
 
 ---
 
@@ -173,6 +173,15 @@ create index if not exists matches_player_status on public.matches(player_id, st
 Il backend usa la **service role**: non serve RLS per il lab (o disabilita RLS su `matches`).
 
 Senza questa tabella il gioco funziona ancora, ma le spoglie restano solo in RAM (comportamento precedente).
+
+
+---
+
+## Note v7 (UI recupero)
+
+- Click su **Partita base** → sempre `startScreen()` (probe `last_match_id` + dialog RIPRENDI).
+- Dopo «Sono io» / login → `startScreen()` anche se non c’è partita da riprendere.
+- Persistenza DB: ancora richiede deploy di `backend/engine-storage.ts` + tabella `matches` (vedi sopra). Senza quello, RIPRENDI funziona solo finché Render tiene la partita in RAM.
 
 ## Deploy
 
