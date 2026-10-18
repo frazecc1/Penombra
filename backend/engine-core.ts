@@ -768,9 +768,14 @@ async function playTrap(c: Context, e: PendingEvent, trapId: string, targetId: s
   if (d.card_type !== 'instant' || reactionTrigger(d) !== eventTrigger(e) || owner.current_mana < d.mana_cost || !list.length)
     throw new Error('Trappola non giocabile in questa finestra');
   const chosenTarget = targetId ?? (e.kind === 'monster_etb' ? e.source_instance_id : null);
-  if (e.kind === 'monster_etb' && list.some(targeted) && chosenTarget !== e.source_instance_id)
+  if (e.kind === 'monster_etb' && list.some(fx => targeted(fx) && !(fx.type === 'draw' && (fx.target === 'any_player' || !fx.target))) && chosenTarget !== e.source_instance_id)
     throw new Error('La Trappola ETB deve bersagliare la creatura che ha generato la finestra');
-  for (const fx of list) if (targeted(fx) && !validTarget(c.s, p, fx, chosenTarget)) throw new Error('Bersaglio della Trappola non valido');
+  for (const fx of list) {
+    if (!targeted(fx)) continue;
+    // Pesca any_player: il bersaglio si sceglie dopo (popup), non serve creatura qui
+    if (fx.type === 'draw' && (fx.target === 'any_player' || !fx.target)) continue;
+    if (!validTarget(c.s, p, fx, chosenTarget)) throw new Error('Bersaglio della Trappola non valido');
+  }
   const nope = list.some(x => x.type === 'counter' || x.type === 'nope');
   if (nope && !(await noPeAllowed(d, e))) throw new Error('NOPE non compatibile con questo evento');
   owner.current_mana -= d.mana_cost;
@@ -781,10 +786,19 @@ async function playTrap(c: Context, e: PendingEvent, trapId: string, targetId: s
     if (e.kind === 'mostrissimo_before_entry') failSummon(c, `NOPE! ${d.name} contrasta l’ingresso; sacrifici già pagati.`);
     log(c, p, 'event_countered', `NOPE! ${d.name} annulla ${e.kind === 'monster_etb' ? 'questo ETB' : e.kind === 'hand_card' ? 'la Maledizione dichiarata' : 'l’ingresso del Mostrissimo'}.`);
   }
-  const ordinary = list.flatMap((fx, effect_index): PendingWork[] => fx.type === 'counter' || fx.type === 'nope' ? [] : [{
-    kind: 'resolve_effect', owner: p, card_id: d.id, source_instance_id: trapId,
-    source: 'trap', effect_index, target_instance_id: chosenTarget, require_source_on_board: false,
-  }]);
+  const ordinary = list.flatMap((fx, effect_index): PendingWork[] => {
+    if (fx.type === 'counter' || fx.type === 'nope') return [];
+    const drawPick = fx.type === 'draw' && (fx.target === 'any_player' || !fx.target);
+    let tid = chosenTarget;
+    if (drawPick) {
+      // solo player:0 / player:1 sono validi; altrimenti null → pending_target_choice
+      tid = (chosenTarget === playerTargetId(0) || chosenTarget === playerTargetId(1)) ? chosenTarget : null;
+    }
+    return [{
+      kind: 'resolve_effect', owner: p, card_id: d.id, source_instance_id: trapId,
+      source: 'trap', effect_index, target_instance_id: tid, require_source_on_board: false,
+    }];
+  });
   prepend(c.s, ...ordinary, ...(!nope ? [{ kind: 'apply_event', event: e } as PendingWork] : []));
 }
 async function declare(c: Context, e: PendingEvent) {
