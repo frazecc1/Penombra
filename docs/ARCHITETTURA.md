@@ -158,7 +158,7 @@ Debug: `window.__penombraDebug` (versione, carta, `pendingTarget`).
 1. `saveGameState` / `commit` scrivono `state_json` su `public.matches`.
 2. `load(id)`: se non in Map → `SELECT state_json FROM matches WHERE id = $1` → rimette in RAM.
 3. Profilo: `player_profiles.last_match_id` punta all’ultima partita aperta.
-4. Client: dialog «RIPRENDI le tue spoglie» (`probePrior` / `recoverPrior` in `game.js`).
+4. Client: dialog «RIPRENDI le tue spoglie» **solo al click** sulla piramide «Partita base» (`startScreen` → `probePrior` / `recoverPrior` in `game.js`). Non si apre al login.
 
 Senza tabella `matches` il backend logga un warning e resta in modalità solo-RAM (compatibile con il lab precedente).
 
@@ -270,4 +270,4 @@ Dettaglio body e errori: vedere `api.ts`.
 
 ---
 
-*Documento allineato al lab Penombra (catalogo Supabase, abilità a 2 pezzi, persistenza partite v6 + UI recupero v7–v8 (dialog su body)).*
+*Documento allineato al lab Penombra (persistenza matches + spoglie solo su piramide base v7).*

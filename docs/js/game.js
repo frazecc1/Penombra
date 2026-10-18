@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v8-start-dialog-body',
+  version: 'v7-spoglie-on-pyramid',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -2174,8 +2174,8 @@ function closeColorDialog() {
   }
   $('deck-color-dialog')?.classList.add('hidden');
   if (currentMode === 'story') return;
-  if ($('home-dialog') && !$('home-dialog').classList.contains('hidden')) return;
-  if (!state && !busy && !matchId && !$('game-screen')?.classList.contains('hidden')) showStart();
+  // Torna sempre alla Home (piramidi). Il dialog spoglie si apre solo cliccando «Partita base».
+  if (!state && !busy && !matchId) showHome();
 }
 
 function animaSceneEl() {
@@ -2253,8 +2253,7 @@ async function showAnimaScene() {
     el.classList.add('hidden');
     el.style.display = 'none';
     if (currentMode === 'story') showStoryStart();
-    else if ($('home-dialog') && !$('home-dialog').classList.contains('hidden')) { /* resta home */ }
-    else showStart();
+    else showHome(); // piramidi; spoglie solo al click su «Partita base»
   };
 
   panel.append(med, nameEl, speech, choices, cancel);
@@ -4243,11 +4242,10 @@ function showPvpResultPopup(title) {
 
 
 window.addEventListener('bellum:auth-ready', () => {
-  // Home subito (niente griglia vuota), poi sempre startScreen (probe + dialog RIPRENDI/nuovo)
+  // Solo Home (piramidi). Il dialog «spoglie» esce SOLO al click sulla piramide «Partita base».
   try { showHome(); } catch (_) { /* ignore */ }
   init()
     .then(() => claimDeviceAndSync().catch(() => {}))
-    .then(() => startScreen().catch(fail))
     .catch(fail);
 });
 

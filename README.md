@@ -13,6 +13,11 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ---
 
+
+## Changelog lab recente
+
+- **v7** — Il dialog «RIPRENDI le tue spoglie» esce **solo** dopo il click sulla piramide «Partita base» (non più automatico al login).
+
 ## Cosa fa il progetto
 
 - **Partita base (PvE vs IA)** — scegli tre colori, moneta del destino, camera di dialogo, poi partita sulla griglia 3×3.
@@ -158,7 +163,7 @@ GET /health
 
 1. Alla creazione e a ogni mossa lo stato completo viene scritto in `public.matches` (colonna `state_json`).
 2. Il profilo utente tiene `last_match_id`.
-3. All’apertura del sito il client chiama `/me/profile` e prova `GET /match/:id`.
+3. Al click sulla piramide «Partita base» il client chiama `/me/profile` e prova `GET /match/:id` (il dialog non si apre da solo al login).
 4. Se il server ha perso la RAM (cold start), `load()` ripristina lo stato da Supabase.
 
 ### SQL da eseguire una volta (SQL Editor Supabase)
