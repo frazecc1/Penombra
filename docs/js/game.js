@@ -4,6 +4,20 @@ import { getAccessToken, getCurrentUser, signOut, usernameFromEmail, showAuthScr
 import { API, SHOW_BASE_MATCH_PYRAMID } from './config.js';
 
 const $ = id => document.getElementById(id);
+
+/** Debug F12: window.__penombraDebug */
+window.__penombraDebug = {
+  version: 'v2-draw-choice',
+  hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
+  state: () => state,
+  matchId: () => matchId,
+  pendingTarget: () => state?.pending_target_choice ?? null,
+  cache: () => cache,
+  async card(id) {
+    cache.delete(id);
+    return (await api(`/cards/${encodeURIComponent(id)}`)).card;
+  },
+};
 const cache = new Map();
 let state = null, matchId = null, busy = false, initialized = false, view = null, flow = null;
 let deathDraft = { choiceId: null, instanceIds: [] };
