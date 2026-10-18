@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v7-recover-ui',
+  version: 'v8-start-dialog-body',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -2711,17 +2711,51 @@ async function probePrior() {
   }
 }
 function startDialog() {
-  let el = $('start-dialog'); if (el) return el;
-  el = document.createElement('div'); el.id = 'start-dialog'; el.className = 'card-detail-overlay start-dialog hidden';
-  el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true'); el.setAttribute('aria-labelledby','start-title'); el.style.zIndex = '320';
-  const panel = document.createElement('div'); panel.className = 'panel';
-  const title = document.createElement('h2'); title.id = 'start-title'; title.textContent = 'Le spoglie e l’inizio';
-  const text = document.createElement('p'); text.id = 'start-text';
-  const actions = document.createElement('div'); actions.className = 'start-actions';
-  const recover = document.createElement('button'); recover.type = 'button'; recover.id = 'start-recover-button'; recover.className = 'primary-button'; recover.textContent = 'RIPRENDI le tue spoglie';
+  let el = $('start-dialog');
+  if (el) {
+    // Se era rimasto dentro #stage (versioni vecchie), spostalo sul body
+    if (el.parentElement !== document.body) document.body.append(el);
+    return el;
+  }
+  el = document.createElement('div');
+  el.id = 'start-dialog';
+  el.className = 'card-detail-overlay start-dialog hidden';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-labelledby', 'start-title');
+  // Sul body, sopra Home (#game-screen è z-index:1). Non dentro #stage.
+  el.style.cssText = 'position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:1rem;background:rgba(5,5,11,.92);';
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.style.cssText = 'width:min(92vw,420px);margin:auto;padding:1.2rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000;';
+  const title = document.createElement('h2');
+  title.id = 'start-title';
+  title.textContent = 'Le spoglie e l’inizio';
+  const text = document.createElement('p');
+  text.id = 'start-text';
+  const actions = document.createElement('div');
+  actions.className = 'start-actions';
+  actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;margin-top:.9rem;';
+  const recover = document.createElement('button');
+  recover.type = 'button';
+  recover.id = 'start-recover-button';
+  recover.className = 'primary-button';
+  recover.textContent = 'RIPRENDI le tue spoglie';
   recover.onclick = () => recoverPrior().catch(fail);
-  const fresh = document.createElement('button'); fresh.type = 'button'; fresh.id = 'start-new-button'; fresh.className = 'secondary-button'; fresh.textContent = 'Abbraccia un nuovo inizio';
-  fresh.onclick = () => openColorDialog();  actions.append(recover,fresh); panel.append(title,text,actions); el.append(panel); stageRoot().append(el);
+  const fresh = document.createElement('button');
+  fresh.type = 'button';
+  fresh.id = 'start-new-button';
+  fresh.className = 'secondary-button';
+  fresh.textContent = 'Abbraccia un nuovo inizio';
+  fresh.onclick = () => {
+    hideStart();
+    showHome();
+    openColorDialog();
+  };
+  actions.append(recover, fresh);
+  panel.append(title, text, actions);
+  el.append(panel);
+  document.body.append(el);
   return el;
 }
 function showStart() {
@@ -2742,11 +2776,19 @@ function showStart() {
       ? 'Un’ombra precedente ti attende. Vuoi riprendere le tue spoglie o abbracciare un nuovo inizio?'
       : 'Nessuna spoglia da recuperare. Puoi solo abbracciare un nuovo inizio.';
   }
-  // Dialog sopra la Home (z-index 320); non nascondere la Home per non perdere il contesto
+  // Home copre #stage: nascondila e mostra il dialog sul body (z-index 500)
+  try { hideHome(); } catch (_) { /* ignore */ }
   el.classList.remove('hidden');
-  console.info('[penombra] showStart', { hasPrior: has, priorId: priorMatch?.id ?? null });
+  // ridondante ma evita display:none residui
+  el.style.display = 'grid';
+  console.info('[penombra] showStart', { hasPrior: has, priorId: priorMatch?.id ?? null, parent: el.parentElement?.id || el.parentElement?.tagName });
 }
-function hideStart() { $('start-dialog')?.classList.add('hidden'); }
+function hideStart() {
+  const el = $('start-dialog');
+  if (!el) return;
+  el.classList.add('hidden');
+  el.style.display = 'none';
+}
 async function startScreen() {
   if (state || busy || probing) return;
   probing = true;

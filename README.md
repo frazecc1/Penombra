@@ -1,3 +1,11 @@
+
+## Note v8 (dialog visibile)
+
+- `#start-dialog` montato su `document.body` con `z-index:500` (prima era dentro `#stage`, coperta dalla Home).
+- `showStart()` nasconde la Home mentre il dialog è aperto.
+- Click piramide / login → dialog «RIPRENDI» finalmente visibile.
+
+
 # Penombra
 
 Gioco di carte a turni ambientato nella penombra.  
@@ -139,7 +147,7 @@ GET /health
 ```
 
 `catalog`: `supabase` | `seed` | `mixed`  
-`build`: etichetta deploy (es. `v7-recover-ui`)
+`build`: etichetta deploy (es. `v8-start-dialog-body`)
 
 ---
 

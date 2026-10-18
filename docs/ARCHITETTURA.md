@@ -270,4 +270,4 @@ Dettaglio body e errori: vedere `api.ts`.
 
 ---
 
-*Documento allineato al lab Penombra (catalogo Supabase, abilità a 2 pezzi, persistenza partite v6 + UI recupero v7).*
+*Documento allineato al lab Penombra (catalogo Supabase, abilità a 2 pezzi, persistenza partite v6 + UI recupero v7–v8 (dialog su body)).*
