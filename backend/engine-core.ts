@@ -1345,18 +1345,22 @@ export async function playCard(id: string, p: PlayerIndex, cardInstanceId: strin
     if (d.card_type === 'aura' && (!options.targetInstanceId || !findCreature(s, options.targetInstanceId))) throw new Error('Seleziona una creatura alleata o nemica per l’Aura');
     if (!playableEffects(d)) throw new Error('Effetto carta non ancora supportato');
     if (d.card_type !== 'aura') for (const fx of effects(d.effect_json).filter(x => targeted(x) && x.trigger === undefined)) {
+      // Pesca any_player: scelta DOPO l’ingresso (popup Tu/avversario), non in play-card.
+      const drawPlayerPick = fx.type === 'draw' && (fx.target === 'any_player' || !fx.target);
       // ETB dopo l’ingresso: bersaglio = creatura in mano (stesso instance_id) valido per buff/cura.
       const selfEtb = d.card_type === 'monster'
         && options.targetInstanceId === inst.instance_id
         && (fx.type === 'buff' || fx.type === 'heal')
         && (fx.target === 'any_creature' || fx.target === 'any_target');
-      if (options.targetInstanceId && !selfEtb && !validTarget(s, p, fx, options.targetInstanceId))
+      if (options.targetInstanceId && !selfEtb && !drawPlayerPick && !validTarget(s, p, fx, options.targetInstanceId))
         throw new Error('Bersaglio non valido');
       if (!options.targetInstanceId && targetChoices(s, p, fx).length
+        && !drawPlayerPick
         && !(d.card_type === 'monster' && (fx.type === 'heal' || fx.type === 'buff')
           && (fx.target === 'any_creature' || fx.target === 'any_target')))
         throw new Error('Seleziona una creatura bersaglio');
-      if (!options.targetInstanceId && d.card_type !== 'monster') throw new Error('Questa carta richiede un bersaglio');
+      if (!options.targetInstanceId && d.card_type !== 'monster' && !drawPlayerPick)
+        throw new Error('Questa carta richiede un bersaglio');
     }
     owner.hand = owner.hand.filter(x => x.instance_id !== inst.instance_id);
     owner.graveyard.push(inst); owner.current_mana -= manaCost;

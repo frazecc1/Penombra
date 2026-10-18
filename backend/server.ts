@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'penombra-api', mode: 'lab-memory', catalog: getCatalogSource(), build: 'v3-draw-choice' });
+  res.json({ ok: true, service: 'penombra-api', mode: 'lab-memory', catalog: getCatalogSource(), build: 'v4-draw-choice' });
 });
 
 app.use(apiRouter);
