@@ -281,4 +281,4 @@ Se una pesca richiede N carte e il mazzo non ne ha abbastanza, per **ogni** cart
 
 ---
 
-*Documento allineato al lab Penombra (attacco/Terraforma + auto-conferma, v10).*
+*Documento allineato al lab Penombra (bordo arcobaleno giocabili, v12).*

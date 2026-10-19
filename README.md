@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v12** — Evidenza giocabile/selezionabile: bordo **arcobaleno** (colori fazioni) su mano, Mostrissimi e celle.
+
+
 - **v11b** — SQL Mostrissimi: constraint `faction_code` allargato a **IND** (fixava l’insert).
 
 
