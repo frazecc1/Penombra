@@ -2905,3 +2905,96 @@ body.notice-open #stage .action-panel button {
   aspect-ratio: 1 / 1;
   flex: none;
 }
+
+
+/* ========== v22 overrides: HUD 2 righe fisse + carta dettaglio grande ========== */
+
+/* Barre nome IA e giocatore: sempre stessa altezza, layout a 2 righe */
+#stage .ai-hud,
+#stage .player-hud {
+  min-height: calc(56 * var(--p)) !important;
+  height: calc(56 * var(--p)) !important;
+  max-height: calc(56 * var(--p)) !important;
+  padding-top: calc(3 * var(--p)) !important;
+  padding-bottom: calc(3 * var(--p)) !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+#stage .hud-name-row {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: calc(2 * var(--p)) !important;
+  min-height: calc(32 * var(--p)) !important;
+  max-height: calc(32 * var(--p)) !important;
+  overflow: hidden !important;
+}
+#stage .hud-name,
+#stage .player-hud .hud-name,
+#stage .ai-hud .hud-name {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: calc(16 * var(--p)) !important;
+  line-height: calc(16 * var(--p)) !important;
+  font-size: calc(14 * var(--p)) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin: 0 !important;
+}
+#stage .hud-deck-colors {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: calc(14 * var(--p)) !important;
+  min-height: calc(14 * var(--p)) !important;
+  max-height: calc(14 * var(--p)) !important;
+  overflow: hidden !important;
+  gap: calc(3 * var(--p)) !important;
+}
+#stage .story-progress-badge:not(.hidden) {
+  position: absolute !important;
+  /* non contribuisce all'altezza della barra */
+  font-size: calc(10 * var(--p)) !important;
+  line-height: 1.1 !important;
+  max-width: 40% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+#stage .hud-center {
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+
+/* Carta dettaglio al centro: più grande, usa quasi tutta la colonna */
+#stage .detail-image {
+  --dh: min(
+    calc(var(--sh) - var(--tap) - 20 * var(--p)),
+    calc((var(--sw) - 12 * var(--p)) / 0.66)
+  ) !important;
+  height: var(--dh) !important;
+  width: calc(var(--dh) * 0.66) !important;
+  max-width: calc(var(--sw) - 12 * var(--p)) !important;
+  max-height: none !important;
+  flex: none !important;
+}
+#stage .detail-image .game-card {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+#stage #card-detail-overlay > .detail-stage {
+  gap: calc(6 * var(--p)) !important;
+  padding: calc(4 * var(--p)) !important;
+}
+#stage .detail-actions {
+  flex: none !important;
+  min-height: var(--tap) !important;
+}

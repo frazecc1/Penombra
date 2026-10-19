@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v22** — HUD nome IA/giocatore a **2 righe fisse** (niente saltello); carta dettaglio al centro **più grande**.
+
+
 - **v21** — Colonne laterali simmetriche (grid 1fr/auto/1fr); niente «Anteprima carta»; popup senza scroll; griglia bloccata (niente saltello all’ingresso carte).
 
 
