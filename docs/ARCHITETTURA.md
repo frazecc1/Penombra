@@ -298,3 +298,6 @@ Fase 1: overlay lista permanenti (`#mostrissimo-flow-overlay` su `#stage`, colon
 
 
 Fase ingresso Mostrissimo: dialog una tantum «Ora seleziona dove vuoi evocare la creatura» + Ho capito; poi griglia libera e conferma sulla cella.
+
+
+Sacrifici Mostrissimo: istruzioni solo via popup Ho capito; pannello Offerta resta con gli altri Mostrissimi (escluso quello in evocazione).

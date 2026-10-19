@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v17-entry-ho-capito',
+  version: 'v18-sacrifice-hint-offer',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -24,6 +24,9 @@ let state = null, matchId = null, busy = false, initialized = false, view = null
 let mostEntryPick = null;
 /** Utente ha chiuso il messaggio «dove entra» con Ho capito. */
 let mostEntryHintDismissed = false;
+/** Utente ha chiuso il messaggio iniziale sacrifici con Ho capito. */
+let mostSacrificeHintDismissed = false;
+let mostSacrificeHintShowing = false;
 let deathDraft = { choiceId: null, instanceIds: [] };
 let presentationRunning = false, presentationGeneration = 0;
 let lastPhaseKey = null; // scandisce ogni cambio fase anche se vuota
@@ -1752,31 +1755,51 @@ function ensureMostInstructionBanner() {
   stage.append(el);
   return el;
 }
-function updateMostInstructionBanner(p) {
+function updateMostInstructionBanner(_p) {
+  // Non usare più il banner in alto: copriva le stats avversario. Solo popup «Ho capito».
   const el = ensureMostInstructionBanner();
-  if (!p || p.stage !== 'paying') {
+  if (el) {
     el.classList.add('hidden');
     el.innerHTML = '';
-    return;
-  }
-  const paused = !!(reaction() || obligatory());
-  const y = p.paid.length;
-  const x = p.required;
-  el.classList.remove('hidden');
-  if (paused) {
-    el.innerHTML = `<strong>In risoluzione…</strong><span>${y}/${x} sacrificati finora</span>`;
-    return;
-  }
-  if (y < x) {
-    el.innerHTML = `<strong>Sacrifica ${x} permanent${x === 1 ? 'e' : 'i'} evidenziat${x === 1 ? 'o' : 'i'}</strong>`
-      + `<span>${y}/${x} sacrificati finora · tocca la plancia</span>`;
-  } else if (!mostEntryHintDismissed) {
-    el.innerHTML = `<strong>Ingresso</strong><span>Leggi il messaggio e premi Ho capito</span>`;
-  } else {
-    el.innerHTML = `<strong>Seleziona la cella di evocazione</strong>`
-      + `<span>Tocca una cella libera evidenziata</span>`;
   }
 }
+
+/** Popup una tantum per le istruzioni sacrificio. */
+function showSacrificeHintDialog(required, paid) {
+  return new Promise(resolve => {
+    const ov = ensureMostrissimoFlowOverlay();
+    ov.innerHTML = '';
+    ov.classList.remove('hidden');
+    ov.classList.add('mostrissimo-flow-overlay--entry');
+    const sheet = document.createElement('div');
+    sheet.className = 'mostrissimo-flow-sheet mostrissimo-flow-sheet--compact';
+    const title = document.createElement('h2');
+    title.id = 'mostrissimo-flow-title';
+    title.textContent = 'Sacrifici';
+    const lead = document.createElement('p');
+    lead.className = 'mostrissimo-flow-lead';
+    const left = required - paid;
+    lead.innerHTML = `Ora dovrai sacrificare <strong>${left}</strong> permanent${left === 1 ? 'e' : 'i'} tra quelli evidenziati sulla plancia.`
+      + `<br><span class="muted">${paid}/${required} sacrificati finora.</span>`;
+    const actions = document.createElement('div');
+    actions.className = 'mostrissimo-flow-actions';
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'primary-button';
+    ok.textContent = 'Ho capito';
+    ok.onclick = () => {
+      mostSacrificeHintDismissed = true;
+      mostSacrificeHintShowing = false;
+      hideMostrissimoFlowOverlay();
+      resolve();
+      render().catch(fail);
+    };
+    actions.append(ok);
+    sheet.append(title, lead, actions);
+    ov.append(sheet);
+  });
+}
+
 
 function hideMostrissimoFlowOverlay() {
   const el = $('mostrissimo-flow-overlay');
@@ -1913,115 +1936,92 @@ async function drawMostrissimi() {
 
   const p = pending();
   // Durante i sacrifici: sostituisci l'offerta con un pannello chiaro di progresso
+  updateMostInstructionBanner(null); // mai banner in alto (copriva le stats)
+
   if (p && p.stage === 'paying') {
     const paused = !!(reaction() || obligatory());
-    const need = p.required - p.paid.length;
 
-    updateMostInstructionBanner(p);
-
-    // Pannello laterale: riassunto compatto
-    const h = document.createElement('h2');
-    h.textContent = p.paid.length < p.required ? '1. Sacrifici' : '2. Ingresso';
-    panel.append(h);
-    const info = document.createElement('p');
-    info.className = 'tribute-progress';
-    info.style.cssText = 'font-size:1rem;line-height:1.4;margin:.35rem 0 .55rem';
-    if (paused) {
-      info.innerHTML = `<strong>In risoluzione…</strong><br>Sacrifici ${p.paid.length}/${p.required}.`;
-    } else if (p.paid.length < p.required) {
-      info.innerHTML = `Sacrifici <strong>${p.paid.length}/${p.required}</strong> · ne servono ancora <strong>${need}</strong>.<br>`
-        + `Tocca un <strong>tuo permanente</strong> sulla plancia.`
-        + `<br><span class="muted">Se ha un’aura, potrai scegliere cosa sacrificare.</span>`;
-    } else {
-      info.innerHTML = `Sacrifici completi.<br>Tocca una <strong>cella libera evidenziata</strong>, poi conferma.`;
-    }
-    panel.append(info);
-    const bar = document.createElement('div');
-    bar.className = 'tribute-segments';
-    bar.setAttribute('aria-hidden', 'true');
-    for (let i = 0; i < p.required; i++) {
-      const seg = document.createElement('span');
-      seg.className = 'tribute-seg' + (i < p.paid.length ? ' is-filled' : '');
-      bar.append(seg);
-    }
-    panel.append(bar);
-
-    // Fase 1: niente overlay a lista — griglia libera
+    // Fase 1 — sacrifici: popup «Ho capito» una volta, poi offerta visibile
     if (p.paid.length < p.required) {
       mostEntryHintDismissed = false;
       mostEntryPick = null;
-      hideMostrissimoFlowOverlay();
-      return;
-    }
-
-    // Fase 2: griglia libera; un solo messaggio «Ho capito», poi scelta cella
-    const cells = summonCells(p);
-    hideMostrissimoFlowOverlay();
-
-    if (!cells.length) {
-      // Nessuna cella: messaggio nel banner
-      return;
-    }
-
-    // Messaggio una tantum, non resta in sovraimpressione sulla griglia
-    if (!mostEntryHintDismissed) {
-      const ov = ensureMostrissimoFlowOverlay();
-      ov.innerHTML = '';
-      ov.classList.remove('hidden');
-      ov.classList.add('mostrissimo-flow-overlay--entry');
-      const sheet = document.createElement('div');
-      sheet.className = 'mostrissimo-flow-sheet mostrissimo-flow-sheet--compact';
-      const title = document.createElement('h2');
-      title.id = 'mostrissimo-flow-title';
-      title.textContent = 'Ingresso';
-      const lead = document.createElement('p');
-      lead.className = 'mostrissimo-flow-lead';
-      lead.textContent = 'Ora seleziona dove vuoi evocare la creatura.';
-      const actions = document.createElement('div');
-      actions.className = 'mostrissimo-flow-actions';
-      const ok = document.createElement('button');
-      ok.type = 'button';
-      ok.className = 'primary-button';
-      ok.textContent = 'Ho capito';
-      ok.onclick = () => {
-        mostEntryHintDismissed = true;
+      if (!paused && !mostSacrificeHintDismissed && !mostSacrificeHintShowing) {
+        mostSacrificeHintShowing = true;
+        showSacrificeHintDialog(p.required, p.paid.length);
+      } else if (mostSacrificeHintDismissed) {
         hideMostrissimoFlowOverlay();
-        // Unica cella legale → pre-seleziona e chiedi conferma
-        if (cells.length === 1) {
-          mostEntryPick = { row: cells[0].row, col: cells[0].col };
-          showMostrissimoEntryConfirm(mostEntryPick).catch(fail);
-        } else {
-          render().catch(fail);
-        }
-      };
-      actions.append(ok);
-      sheet.append(title, lead, actions);
-      ov.append(sheet);
-      return;
+      }
+      // non return: sotto si ridisegna la striscia Offerta (senza il Mostrissimo in evocazione)
+    } else {
+      // Fase 2 — ingresso
+      const cells = summonCells(p);
+      if (!cells.length) {
+        hideMostrissimoFlowOverlay();
+      } else if (!mostEntryHintDismissed) {
+        const ov = ensureMostrissimoFlowOverlay();
+        ov.innerHTML = '';
+        ov.classList.remove('hidden');
+        ov.classList.add('mostrissimo-flow-overlay--entry');
+        const sheet = document.createElement('div');
+        sheet.className = 'mostrissimo-flow-sheet mostrissimo-flow-sheet--compact';
+        const title = document.createElement('h2');
+        title.id = 'mostrissimo-flow-title';
+        title.textContent = 'Ingresso';
+        const lead = document.createElement('p');
+        lead.className = 'mostrissimo-flow-lead';
+        lead.textContent = 'Ora seleziona dove vuoi evocare la creatura.';
+        const actions = document.createElement('div');
+        actions.className = 'mostrissimo-flow-actions';
+        const ok = document.createElement('button');
+        ok.type = 'button';
+        ok.className = 'primary-button';
+        ok.textContent = 'Ho capito';
+        ok.onclick = () => {
+          mostEntryHintDismissed = true;
+          hideMostrissimoFlowOverlay();
+          if (cells.length === 1) {
+            mostEntryPick = { row: cells[0].row, col: cells[0].col };
+            showMostrissimoEntryConfirm(mostEntryPick).catch(fail);
+          } else {
+            render().catch(fail);
+          }
+        };
+        actions.append(ok);
+        sheet.append(title, lead, actions);
+        ov.append(sheet);
+      } else {
+        hideMostrissimoFlowOverlay();
+        if (mostEntryPick) showMostrissimoEntryConfirm(mostEntryPick).catch(fail);
+      }
+      // continua: mostra ancora gli altri Mostrissimi in offerta
     }
-
-    // Dopo «Ho capito»: nessun overlay fisso; conferma solo se c’è una cella già scelta
-    if (mostEntryPick) {
-      showMostrissimoEntryConfirm(mostEntryPick).catch(fail);
-    }
-    return;
+  } else {
+    hideMostrissimoFlowOverlay();
+    mostEntryPick = null;
+    mostEntryHintDismissed = false;
+    mostSacrificeHintDismissed = false;
+    mostSacrificeHintShowing = false;
   }
 
-  hideMostrissimoFlowOverlay();
-  mostEntryPick = null;
-  mostEntryHintDismissed = false;
-  updateMostInstructionBanner(null);
-
-  // Offerta normale (nessuna evocazione in corso)
+  // Offerta (anche durante i sacrifici: si vedono gli altri Mostrissimi)
   const h = document.createElement('h2'); h.textContent = 'Offerta'; panel.append(h);
   const rules = document.createElement('p');
   rules.className = 'mostrissimo-rules';
-  rules.textContent = 'Max 1/turno · Mana 0 · Sacrifica permanenti (anche stanchi).';
+  if (p && p.stage === 'paying' && p.paid.length < p.required) {
+    rules.textContent = `Sacrifici ${p.paid.length}/${p.required} · tocca un permanente evidenziato.`;
+  } else if (p && p.stage === 'paying') {
+    rules.textContent = 'Scegli la cella di ingresso sulla plancia.';
+  } else {
+    rules.textContent = 'Max 1/turno · Mana 0 · Sacrifica permanenti (anche stanchi).';
+  }
   panel.append(rules);
   if (!state) { panel.classList.add('hidden'); return; }
   panel.classList.remove('hidden');
   const strip = document.createElement('div'); strip.className = 'mostrissimo-offer'; panel.append(strip);
+  const summoningId = (p && p.stage === 'paying') ? p.card_id : null;
   for (const inst of state.shared_mostrissimi ?? []) {
+    // Durante l’evocazione non mostrare quello in corso: restano gli altri in offerta
+    if (summoningId && inst.card_id === summoningId) continue;
     const isBlocked = inst.card_id === 'lab-mostrissimo-inaccessible';
     const b = document.createElement('button');
     b.type = 'button';
@@ -2443,6 +2443,9 @@ async function boardClick(pos) {
     const c0 = at(pos);
     const p0 = pending();
     if (p0.paid.length < p0.required) {
+      if (!mostSacrificeHintDismissed) {
+        return notice('Prima premi «Ho capito» sul messaggio.', 'error');
+      }
       if (!c0) return notice('Tocca un tuo permanente evidenziato da sacrificare.', 'error');
       return pickTributeFromCell(c0);
     }

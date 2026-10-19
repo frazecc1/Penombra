@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v18** — Istruzioni sacrificio in popup «Ho capito» (niente banner sulle stats); durante i sacrifici restano visibili gli altri Mostrissimi in offerta.
+
+
 - **v17** — Fase «dove entra»: messaggio *Ora seleziona dove vuoi evocare la creatura* + **Ho capito** (niente overlay fisso sulla griglia).
 
 
