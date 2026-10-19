@@ -2528,3 +2528,130 @@ body.notice-open #stage .action-panel button {
   color: #e8c565;
   font-weight: 800;
 }
+
+
+/* ----- Flusso Mostrissimo: lista sacrifici a colonna centrale ----- */
+#stage .mostrissimo-flow-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 140;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0.45rem;
+  background: rgba(8, 6, 4, 0.72);
+  pointer-events: auto;
+}
+#stage .mostrissimo-flow-overlay.hidden { display: none !important; }
+#stage .mostrissimo-flow-sheet {
+  width: min(100%, 420px);
+  max-height: 100%;
+  overflow: auto;
+  margin: auto;
+  padding: 0.85rem 0.75rem 1rem;
+  border: 1px solid var(--tomb-gold, #c9a043);
+  border-radius: 0.65rem;
+  background: linear-gradient(180deg, #1a1410 0%, #0e0b09 100%);
+  box-shadow: 0 16px 48px #000a;
+  color: var(--tomb-text, #efe2c0);
+}
+#stage .mostrissimo-flow-sheet h2 {
+  margin: 0 0 0.45rem;
+  font-family: var(--font-title, "Lilita One", Georgia, serif);
+  font-size: 1.2rem;
+  color: var(--tomb-gold-light, #e8c565);
+  text-align: center;
+}
+#stage .mostrissimo-flow-lead {
+  margin: 0 0 0.65rem;
+  text-align: center;
+  line-height: 1.4;
+  font-size: 0.98rem;
+}
+#stage .tribute-segments {
+  display: flex;
+  gap: 0.28rem;
+  justify-content: center;
+  margin: 0.35rem 0 0.75rem;
+}
+#stage .tribute-segments--lg { margin-bottom: 0.9rem; }
+#stage .tribute-seg {
+  width: 1.35rem;
+  height: 0.45rem;
+  border-radius: 99px;
+  background: #3a2e22;
+  border: 1px solid #6b5a3c;
+}
+#stage .tribute-seg.is-filled {
+  background: linear-gradient(90deg, #e8c565, #c9a043);
+  border-color: #e8c565;
+  box-shadow: 0 0 8px #e8c56588;
+}
+#stage .tribute-list--full {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+#stage .tribute-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem;
+  border: 1px solid #5a4a32;
+  border-radius: 0.5rem;
+  background: #14100c;
+}
+#stage .tribute-row-preview {
+  width: 72px;
+  transform: scale(0.92);
+  transform-origin: center center;
+}
+#stage .tribute-row-preview .fan-card,
+#stage .tribute-row-preview article {
+  width: 72px !important;
+  max-width: 72px;
+}
+#stage .tribute-row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  font-size: 0.92rem;
+}
+#stage .tribute-row-meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#stage .mostrissimo-flow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+#stage .board-cell.most-entry-pick {
+  outline: 3px solid #e8c565;
+  outline-offset: -3px;
+  box-shadow: 0 0 0 3px #e8c565, 0 0 20px #e8c565aa !important;
+}
+#mostrissimo-panel .tribute-segments {
+  margin: 0.25rem 0 0.5rem;
+}
+@media (max-width: 640px) {
+  #stage .mostrissimo-flow-sheet {
+    width: 100%;
+    max-height: 92%;
+    padding: 0.7rem 0.55rem 0.85rem;
+  }
+  #stage .tribute-row {
+    grid-template-columns: 56px 1fr;
+    grid-template-rows: auto auto;
+  }
+  #stage .tribute-row .primary-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  #stage .tribute-row-preview { width: 56px; }
+}

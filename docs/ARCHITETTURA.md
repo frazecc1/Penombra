@@ -267,6 +267,12 @@ Dettaglio body e errori: vedere `api.ts`.
 
 Se una pesca richiede N carte e il mazzo non ne ha abbastanza, per **ogni** carta mancante il giocatore perde **1 PV** (non 2). La funzione `draw()` in `engine-core.ts` applica il danno ad ogni tentativo fallito nel ciclo.
 
+
+
+### UX sacrifici Mostrissimo
+
+Fase 1: overlay lista permanenti (`#mostrissimo-flow-overlay` su `#stage`, colonna centrale) + bottone **Sacrifica** (uno alla volta; on_death/trappole in mezzo). In risoluzione: stato pausa. Fase 2: scelta cella + **Conferma ingresso** (auto-select se una sola cella).
+
 ## 9. Glossario rapido
 
 | Termine | Significato |

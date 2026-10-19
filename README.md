@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v14** — UX sacrifici Mostrissimo: lista a schermo (colonna centrale), barra ✦, pausa in risoluzione, conferma cella di ingresso.
+
+
 - **v13** — Anche le creature **in campo** che possono muovere/attaccare hanno il bordo arcobaleno (`.can-act`).
 
 
