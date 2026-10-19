@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v19** — Dialog unificati (stile dettaglio carta); Sacrifici/Ingresso rispettano **Auto Ho capito**.
+
+
 - **v18** — Istruzioni sacrificio in popup «Ho capito» (niente banner sulle stats); durante i sacrifici restano visibili gli altri Mostrissimi in offerta.
 
 

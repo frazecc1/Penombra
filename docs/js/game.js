@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v18-sacrifice-hint-offer',
+  version: 'v19-unified-dialogs-auto',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -242,6 +242,123 @@ function applyAutoNotice(on) {
   if (toggle) toggle.setAttribute('aria-checked', on ? 'true' : 'false');
   try { localStorage.setItem('bellum:auto-ho-capito', on ? '1' : '0'); } catch (_) { /* ignore */ }
 }
+
+/** Overlay dialog unificato (stile card-detail) nella colonna centrale. */
+function ensureGameDialogRoot() {
+  let el = $('game-dialog-overlay');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'game-dialog-overlay';
+  el.className = 'game-dialog-overlay hidden';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  stageRoot().append(el);
+  return el;
+}
+
+/**
+ * Dialog «Ho capito» unificato.
+ * Rispetta Impostazioni → Auto Ho capito (chiusura automatica ~900ms).
+ */
+function showHoCapitoDialog({ title, bodyHtml, imageHtml = '' }) {
+  return new Promise(resolve => {
+    const root = ensureGameDialogRoot();
+    root.innerHTML = '';
+    root.classList.remove('hidden');
+    const panel = document.createElement('div');
+    panel.className = 'game-dialog-panel';
+    const h = document.createElement('h2');
+    h.className = 'game-dialog-title';
+    h.textContent = title || '';
+    const body = document.createElement('div');
+    body.className = 'game-dialog-body';
+    body.innerHTML = bodyHtml || '';
+    panel.append(h, body);
+    if (imageHtml) {
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'game-dialog-image';
+      imgWrap.innerHTML = imageHtml;
+      panel.append(imgWrap);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'game-dialog-actions';
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'primary-button game-dialog-ok';
+    ok.textContent = 'Ho capito';
+    let settled = false;
+    let autoTimer = null;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(autoTimer);
+      root.classList.add('hidden');
+      root.innerHTML = '';
+      resolve();
+    };
+    ok.onclick = e => { e.stopPropagation(); done(); };
+    actions.append(ok);
+    panel.append(actions);
+    root.append(panel);
+    // click sullo sfondo chiude (come phase-banner)
+    root.onclick = e => {
+      if (e.target === root) done();
+    };
+    if (isAutoNotice()) {
+      autoTimer = setTimeout(done, 900);
+    }
+  });
+}
+
+/** Pannello conferma generico (stesso stile). buttons: [{ label, primary?, onClick }] */
+function showGameConfirmDialog({ title, bodyHtml, imageHtml = '', buttons }) {
+  return new Promise(resolve => {
+    const root = ensureGameDialogRoot();
+    root.innerHTML = '';
+    root.classList.remove('hidden');
+    const panel = document.createElement('div');
+    panel.className = 'game-dialog-panel';
+    const h = document.createElement('h2');
+    h.className = 'game-dialog-title';
+    h.textContent = title || '';
+    const body = document.createElement('div');
+    body.className = 'game-dialog-body';
+    body.innerHTML = bodyHtml || '';
+    panel.append(h, body);
+    if (imageHtml) {
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'game-dialog-image';
+      imgWrap.innerHTML = imageHtml;
+      panel.append(imgWrap);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'game-dialog-actions';
+    let settled = false;
+    const done = (val) => {
+      if (settled) return;
+      settled = true;
+      root.classList.add('hidden');
+      root.innerHTML = '';
+      resolve(val);
+    };
+    for (const b of buttons || []) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = b.primary ? 'primary-button' : 'secondary-button';
+      btn.textContent = b.label;
+      btn.onclick = e => {
+        e.stopPropagation();
+        if (b.onClick) b.onClick();
+        done(b.value);
+      };
+      actions.append(btn);
+    }
+    panel.append(actions);
+    root.append(panel);
+  });
+}
+
+
 function wireAutoNotice() {
   const toggle = $('auto-notice-toggle');
   if (!toggle || toggle.dataset.ready) return;
@@ -661,56 +778,20 @@ function hideTargetReminder() {
  * Risolve true se confermato, false se annullato.
  */
 function confirmTargetChoice(cell, cardDef, hint = '', dialogTitle = 'Conferma bersaglio') {
-  return new Promise(resolve => {
-    let el = $('target-confirm-dialog');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'target-confirm-dialog';
-      el.className = 'card-detail-overlay';
-      el.setAttribute('role', 'dialog');
-      el.setAttribute('aria-modal', 'true');
-      el.style.zIndex = '160';
-      stageRoot().append(el);
-    }
-    el.innerHTML = '';
-    const panel = document.createElement('div');
-    panel.className = 'panel';
-    panel.style.cssText = 'width:min(92vw,360px);margin:auto;padding:1.1rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
-    const title = document.createElement('h2');
-    title.style.cssText = 'margin:0 0 .5rem;font-size:1.15rem';
-    title.textContent = dialogTitle;
-    const sub = document.createElement('p');
-    sub.style.cssText = 'margin:0 0 .6rem;opacity:.9;line-height:1.4';
-    const who = isMine(cell?.owner_index) ? 'tua' : (currentMode === 'pvp' ? 'avversario' : 'IA');
-    const stats = isCreatureCell(cell)
-      ? ` · ATK ${cell.attack} · HP ${cell.hp}`
-      : (cell?.hp != null ? ` · PV ${cell.hp}` : '');
-    sub.textContent = hint || `${cardDef?.name ?? 'Permanente'} (${who}${stats})`;
-    const preview = document.createElement('div');
-    preview.style.cssText = 'margin:.5rem auto;max-width:200px';
-    if (cardDef) preview.innerHTML = cardHTML(cardDef, true);
-    const actions = document.createElement('div');
-    actions.style.cssText = 'display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem';
-    const done = (ok) => {
-      el.classList.add('hidden');
-      el.innerHTML = '';
-      resolve(ok);
-    };
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'secondary-button';
-    cancel.textContent = 'Annulla';
-    cancel.onclick = () => done(false);
-    const confirm = document.createElement('button');
-    confirm.type = 'button';
-    confirm.className = 'primary-button';
-    confirm.textContent = 'Conferma';
-    confirm.onclick = () => done(true);
-    actions.append(cancel, confirm);
-    panel.append(title, sub, preview, actions);
-    el.append(panel);
-    el.style.cssText = 'position:fixed;inset:0;z-index:160;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(5,5,11,.82);';
-    el.classList.remove('hidden');
+  const who = isMine(cell?.owner_index) ? 'tua' : (currentMode === 'pvp' ? 'avversario' : 'IA');
+  const stats = isCreatureCell(cell)
+    ? ` · ATK ${cell.attack} · HP ${cell.hp}`
+    : (cell?.hp != null ? ` · PV ${cell.hp}` : '');
+  const body = hint || `${cardDef?.name ?? 'Permanente'} (${who}${stats})`;
+  const imageHtml = cardDef ? cardHTML(cardDef, true) : '';
+  return showGameConfirmDialog({
+    title: dialogTitle,
+    bodyHtml: `<p>${escape(body)}</p>`,
+    imageHtml,
+    buttons: [
+      { label: 'Annulla', value: false },
+      { label: 'Conferma', primary: true, value: true },
+    ],
   });
 }
 function overlay() {
@@ -1552,54 +1633,20 @@ function tributeOptions() {
 }
 
 
-/** Conferma ingresso su cella scelta (dialog centrato, non permanente sulla griglia). */
+/** Conferma ingresso su cella scelta (stile dialog unificato). */
 let mostEntryConfirmOpen = false;
 async function showMostrissimoEntryConfirm(pos) {
   if (mostEntryConfirmOpen || busy || !pos) return;
   mostEntryConfirmOpen = true;
   try {
     const label = `[${pos.row}, ${pos.col}]`;
-    const ok = await new Promise(resolve => {
-      let el = $('mostrissimo-entry-confirm');
-      if (!el) {
-        el = document.createElement('div');
-        el.id = 'mostrissimo-entry-confirm';
-        el.setAttribute('role', 'dialog');
-        el.setAttribute('aria-modal', 'true');
-        document.body.append(el);
-      }
-      el.style.cssText = 'position:fixed;inset:0;z-index:170;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(5,5,11,.82);';
-      el.innerHTML = '';
-      const panel = document.createElement('div');
-      panel.className = 'panel';
-      panel.style.cssText = 'width:min(92vw,360px);margin:auto;padding:1.1rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
-      const title = document.createElement('h2');
-      title.style.cssText = 'margin:0 0 .5rem;font-size:1.15rem';
-      title.textContent = 'Conferma ingresso';
-      const sub = document.createElement('p');
-      sub.style.cssText = 'margin:0 0 .85rem;line-height:1.4';
-      sub.textContent = `Evocare il Mostrissimo sulla cella ${label}?`;
-      const actions = document.createElement('div');
-      actions.style.cssText = 'display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap';
-      const done = (v) => {
-        el.classList.add('hidden');
-        el.innerHTML = '';
-        resolve(v);
-      };
-      const cancel = document.createElement('button');
-      cancel.type = 'button';
-      cancel.className = 'secondary-button';
-      cancel.textContent = 'Cambia cella';
-      cancel.onclick = () => done(false);
-      const conf = document.createElement('button');
-      conf.type = 'button';
-      conf.className = 'primary-button';
-      conf.textContent = 'Conferma';
-      conf.onclick = () => done(true);
-      actions.append(cancel, conf);
-      panel.append(title, sub, actions);
-      el.append(panel);
-      el.classList.remove('hidden');
+    const ok = await showGameConfirmDialog({
+      title: 'Conferma ingresso',
+      bodyHtml: `Evocare il Mostrissimo sulla cella <strong>${label}</strong>?`,
+      buttons: [
+        { label: 'Cambia cella', value: false },
+        { label: 'Conferma', primary: true, value: true },
+      ],
     });
     if (ok) {
       await confirmMostrissimoEntry(pos);
@@ -1635,54 +1682,18 @@ async function confirmMostrissimoEntry(pos) {
 }
 
 
-/** Scelta sacrificio: mostro vs aura (o conferma semplice). */
+/** Scelta sacrificio: mostro vs aura (dialog unificato). */
 function showSacrificeOptions(options, titleText) {
-  return new Promise(resolve => {
-    let el = $('tribute-pick-dialog');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'tribute-pick-dialog';
-      el.className = 'card-detail-overlay';
-      el.setAttribute('role', 'dialog');
-      el.setAttribute('aria-modal', 'true');
-      el.style.zIndex = '165';
-      (typeof stageRoot === 'function' ? stageRoot() : document.body).append(el);
-    }
-    el.innerHTML = '';
-    const panel = document.createElement('div');
-    panel.className = 'panel';
-    panel.style.cssText = 'width:min(92vw,380px);margin:auto;padding:1.1rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
-    const title = document.createElement('h2');
-    title.style.cssText = 'margin:0 0 .55rem;font-size:1.15rem';
-    title.textContent = titleText || 'Cosa vuoi sacrificare?';
-    const sub = document.createElement('p');
-    sub.style.cssText = 'margin:0 0 .75rem;opacity:.9;line-height:1.4;font-size:.95rem';
-    sub.textContent = 'Scegli il permanente da mandare al cimitero (non si può annullare dopo la conferma).';
-    const list = document.createElement('div');
-    list.style.cssText = 'display:flex;flex-direction:column;gap:.45rem;margin:.4rem 0 .8rem';
-    const done = (id) => {
-      el.classList.add('hidden');
-      el.innerHTML = '';
-      resolve(id);
-    };
-    for (const opt of options) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'primary-button';
-      b.style.cssText = 'width:100%';
-      b.textContent = opt.label;
-      b.onclick = () => done(opt.instanceId);
-      list.append(b);
-    }
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'secondary-button';
-    cancel.textContent = 'Annulla';
-    cancel.onclick = () => done(null);
-    panel.append(title, sub, list, cancel);
-    el.append(panel);
-    el.style.cssText = 'position:fixed;inset:0;z-index:165;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(5,5,11,.82);';
-    el.classList.remove('hidden');
+  const buttons = options.map(opt => ({
+    label: opt.label,
+    primary: true,
+    value: opt.instanceId,
+  }));
+  buttons.push({ label: 'Annulla', value: null });
+  return showGameConfirmDialog({
+    title: titleText || 'Cosa vuoi sacrificare?',
+    bodyHtml: 'Scegli il permanente da mandare al cimitero (non si può annullare dopo la conferma).',
+    buttons,
   });
 }
 
@@ -1764,40 +1775,18 @@ function updateMostInstructionBanner(_p) {
   }
 }
 
-/** Popup una tantum per le istruzioni sacrificio. */
-function showSacrificeHintDialog(required, paid) {
-  return new Promise(resolve => {
-    const ov = ensureMostrissimoFlowOverlay();
-    ov.innerHTML = '';
-    ov.classList.remove('hidden');
-    ov.classList.add('mostrissimo-flow-overlay--entry');
-    const sheet = document.createElement('div');
-    sheet.className = 'mostrissimo-flow-sheet mostrissimo-flow-sheet--compact';
-    const title = document.createElement('h2');
-    title.id = 'mostrissimo-flow-title';
-    title.textContent = 'Sacrifici';
-    const lead = document.createElement('p');
-    lead.className = 'mostrissimo-flow-lead';
-    const left = required - paid;
-    lead.innerHTML = `Ora dovrai sacrificare <strong>${left}</strong> permanent${left === 1 ? 'e' : 'i'} tra quelli evidenziati sulla plancia.`
-      + `<br><span class="muted">${paid}/${required} sacrificati finora.</span>`;
-    const actions = document.createElement('div');
-    actions.className = 'mostrissimo-flow-actions';
-    const ok = document.createElement('button');
-    ok.type = 'button';
-    ok.className = 'primary-button';
-    ok.textContent = 'Ho capito';
-    ok.onclick = () => {
-      mostSacrificeHintDismissed = true;
-      mostSacrificeHintShowing = false;
-      hideMostrissimoFlowOverlay();
-      resolve();
-      render().catch(fail);
-    };
-    actions.append(ok);
-    sheet.append(title, lead, actions);
-    ov.append(sheet);
+/** Popup una tantum istruzioni sacrificio (rispetta Auto Ho capito). */
+async function showSacrificeHintDialog(required, paid) {
+  const left = required - paid;
+  await showHoCapitoDialog({
+    title: 'Sacrifici',
+    bodyHtml: `Ora dovrai sacrificare <strong>${left}</strong> permanent${left === 1 ? 'e' : 'i'} tra quelli evidenziati sulla plancia.`
+      + `<br><span class="muted">${paid}/${required} sacrificati finora.</span>`,
   });
+  mostSacrificeHintDismissed = true;
+  mostSacrificeHintShowing = false;
+  hideMostrissimoFlowOverlay();
+  await render().catch(fail);
 }
 
 
@@ -1947,7 +1936,7 @@ async function drawMostrissimi() {
       mostEntryPick = null;
       if (!paused && !mostSacrificeHintDismissed && !mostSacrificeHintShowing) {
         mostSacrificeHintShowing = true;
-        showSacrificeHintDialog(p.required, p.paid.length);
+        showSacrificeHintDialog(p.required, p.paid.length).catch(fail);
       } else if (mostSacrificeHintDismissed) {
         hideMostrissimoFlowOverlay();
       }
@@ -1957,38 +1946,24 @@ async function drawMostrissimi() {
       const cells = summonCells(p);
       if (!cells.length) {
         hideMostrissimoFlowOverlay();
-      } else if (!mostEntryHintDismissed) {
-        const ov = ensureMostrissimoFlowOverlay();
-        ov.innerHTML = '';
-        ov.classList.remove('hidden');
-        ov.classList.add('mostrissimo-flow-overlay--entry');
-        const sheet = document.createElement('div');
-        sheet.className = 'mostrissimo-flow-sheet mostrissimo-flow-sheet--compact';
-        const title = document.createElement('h2');
-        title.id = 'mostrissimo-flow-title';
-        title.textContent = 'Ingresso';
-        const lead = document.createElement('p');
-        lead.className = 'mostrissimo-flow-lead';
-        lead.textContent = 'Ora seleziona dove vuoi evocare la creatura.';
-        const actions = document.createElement('div');
-        actions.className = 'mostrissimo-flow-actions';
-        const ok = document.createElement('button');
-        ok.type = 'button';
-        ok.className = 'primary-button';
-        ok.textContent = 'Ho capito';
-        ok.onclick = () => {
+      } else if (!mostEntryHintDismissed && !window.__mostEntryHintShowing) {
+        window.__mostEntryHintShowing = true;
+        hideMostrissimoFlowOverlay();
+        showHoCapitoDialog({
+          title: 'Ingresso',
+          bodyHtml: 'Ora seleziona dove vuoi evocare la creatura.',
+        }).then(async () => {
           mostEntryHintDismissed = true;
-          hideMostrissimoFlowOverlay();
+          window.__mostEntryHintShowing = false;
           if (cells.length === 1) {
             mostEntryPick = { row: cells[0].row, col: cells[0].col };
-            showMostrissimoEntryConfirm(mostEntryPick).catch(fail);
+            await showMostrissimoEntryConfirm(mostEntryPick);
           } else {
-            render().catch(fail);
+            await render().catch(fail);
           }
-        };
-        actions.append(ok);
-        sheet.append(title, lead, actions);
-        ov.append(sheet);
+        }).catch(fail);
+      } else if (!mostEntryHintDismissed) {
+        // dialog già in corso
       } else {
         hideMostrissimoFlowOverlay();
         if (mostEntryPick) showMostrissimoEntryConfirm(mostEntryPick).catch(fail);

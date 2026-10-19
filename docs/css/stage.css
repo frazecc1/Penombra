@@ -2720,3 +2720,75 @@ body.notice-open #stage .action-panel button {
   line-height: 1.35;
   opacity: 0.95;
 }
+
+
+/* Dialog unificati (Ho capito, conferme) — stile card-detail, max colonna centrale */
+#stage .game-dialog-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 180;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: rgba(5, 5, 11, 0.88);
+  backdrop-filter: blur(6px);
+}
+#stage .game-dialog-overlay.hidden { display: none !important; }
+#stage .game-dialog-panel {
+  width: min(100%, 100%);
+  max-width: 100%;
+  max-height: min(92%, 100%);
+  overflow: auto;
+  margin: 0 auto;
+  padding: 1.25rem 1.1rem 1.35rem;
+  text-align: center;
+  border: 2px solid #a78355;
+  border-radius: 14px;
+  background: #171426;
+  color: #f7eedc;
+  box-shadow: 0 15px 60px #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+#stage .game-dialog-title {
+  margin: 0;
+  width: 100%;
+  color: #f0d28f;
+  font: 400 1.45rem/1.2 "IM Fell English", Georgia, serif;
+}
+#stage .game-dialog-body {
+  margin: 0;
+  width: 100%;
+  font-size: 1.12rem;
+  line-height: 1.45;
+  color: #f7eedc;
+}
+#stage .game-dialog-body .muted,
+#stage .game-dialog-body span.muted {
+  opacity: 0.85;
+  font-size: 0.98rem;
+}
+#stage .game-dialog-image {
+  width: min(100%, 220px);
+  margin: 0.25rem auto;
+}
+#stage .game-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: center;
+  width: 100%;
+  margin-top: 0.35rem;
+}
+#stage .game-dialog-actions .primary-button,
+#stage .game-dialog-actions .secondary-button {
+  min-height: 44px;
+  min-width: 7rem;
+  font-size: 1.05rem;
+}
+#stage .game-dialog-ok {
+  min-width: 9rem;
+}

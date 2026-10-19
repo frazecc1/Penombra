@@ -301,3 +301,6 @@ Fase ingresso Mostrissimo: dialog una tantum «Ora seleziona dove vuoi evocare l
 
 
 Sacrifici Mostrissimo: istruzioni solo via popup Ho capito; pannello Offerta resta con gli altri Mostrissimi (escluso quello in evocazione).
+
+
+Dialog UI: `showHoCapitoDialog` / `showGameConfirmDialog` su `#game-dialog-overlay` (colonna `#stage`); Auto Ho capito = `bellum:auto-ho-capito` + timeout 900ms.
