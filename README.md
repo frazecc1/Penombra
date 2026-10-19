@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v20** — Layout stabile: colonna centrale fissa al centro; colonne laterali simmetriche; carte grandi in trappole/dialoghi; meno saltelli di scala.
+
+
 - **v19** — Dialog unificati (stile dettaglio carta); Sacrifici/Ingresso rispettano **Auto Ho capito**.
 
 

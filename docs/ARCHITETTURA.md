@@ -304,3 +304,6 @@ Sacrifici Mostrissimo: istruzioni solo via popup Ho capito; pannello Offerta res
 
 
 Dialog UI: `showHoCapitoDialog` / `showGameConfirmDialog` su `#game-dialog-overlay` (colonna `#stage`); Auto Ho capito = `bellum:auto-ho-capito` + timeout 900ms.
+
+
+Layout: `fitStage` fissa `#stage` a 455×768×unit al centro; laterali `flex:1` simmetrici se viewport ≥1100px; mobile solo colonna centrale.

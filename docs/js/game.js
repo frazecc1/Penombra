@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v19-unified-dialogs-auto',
+  version: 'v20-stable-layout-large-cards',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -192,23 +192,56 @@ function handGeometry(n) {
 // Riferimento 455x768. Finestra "larga" (PC): colonna di 455x768 scalata e centrata. Finestra "stretta" (telefono
 // in verticale): la colonna occupa tutta l'area visibile e l'altezza è flessibile.
 const STAGE_W = 455, STAGE_H = 768, STAGE_MIN_ASPECT = 0.44;
+/** Soglia desktop: colonne laterali + colonna centrale fissa al centro. */
+const STAGE_FRAME_MIN_W = 1100;
+let _fitKey = '';
 function fitStage() {
   const stage = $('stage'); if (!stage) return;
   const vw = window.innerWidth, vh = window.innerHeight; if (!vw || !vh) return;
+  // Desktop largo: scala per altezza/larghezza ma dimensioni stage SEMPRE 455×768 * unit (niente saltelli)
+  const framed = vw >= STAGE_FRAME_MIN_W;
   const byWidth = vw / STAGE_W, byHeight = vh / STAGE_H;
-  const unit = Math.min(byWidth, byHeight), fullWidth = byWidth <= byHeight;
-  const width = fullWidth ? vw : STAGE_W * unit, height = fullWidth ? Math.min(vh, vw / STAGE_MIN_ASPECT) : vh;
-  stage.style.setProperty('--p',`${unit.toFixed(4)}px`);
-  document.documentElement.style.setProperty('--p',`${unit.toFixed(4)}px`);
-  stage.style.setProperty('--sw',`${Math.floor(width)}px`);
-  stage.style.setProperty('--sh',`${Math.floor(height)}px`);
-  stage.closest('.stage-frame')?.classList.toggle('is-framed',!fullWidth);
+  let unit, width, height;
+  if (framed) {
+    unit = Math.min(byWidth, byHeight);
+    // Lascia un po’ di respiro alle colonne laterali: non usare più del 42% della larghezza per lo stage
+    const maxUnitBySide = (vw * 0.42) / STAGE_W;
+    unit = Math.min(unit, maxUnitBySide);
+    width = STAGE_W * unit;
+    height = STAGE_H * unit;
+  } else {
+    // Mobile / stretto: tutta la larghezza, altezza proporzionata
+    unit = vw / STAGE_W;
+    width = vw;
+    height = Math.min(vh, Math.max(STAGE_H * unit * 0.92, vw / STAGE_MIN_ASPECT));
+    // Ricalcola unit dall’altezza se serve per non sforare
+    unit = Math.min(width / STAGE_W, height / STAGE_H);
+    width = Math.floor(STAGE_W * unit);
+    height = Math.floor(STAGE_H * unit);
+  }
+  const key = `${framed}|${unit.toFixed(3)}|${Math.floor(width)}|${Math.floor(height)}`;
+  if (key === _fitKey) return; // evita micro-aggiornamenti che fanno "saltare" il layout
+  _fitKey = key;
+  stage.style.setProperty('--p', `${unit.toFixed(4)}px`);
+  document.documentElement.style.setProperty('--p', `${unit.toFixed(4)}px`);
+  stage.style.setProperty('--sw', `${Math.floor(width)}px`);
+  stage.style.setProperty('--sh', `${Math.floor(height)}px`);
+  stage.closest('.stage-frame')?.classList.toggle('is-framed', framed);
 }
 function wireStage() {
   fitStage();
-  window.addEventListener('resize',fitStage);
-  window.addEventListener('orientationchange',() => setTimeout(fitStage,150));
-  window.visualViewport?.addEventListener('resize',fitStage);
+  let resizeTimer = null;
+  const schedule = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(fitStage, 80);
+  };
+  window.addEventListener('resize', schedule);
+  window.addEventListener('orientationchange', () => setTimeout(() => { _fitKey = ''; fitStage(); }, 150));
+  // visualViewport può oscillare con la tastiera mobile: su desktop framed ignora micro-variazioni
+  window.visualViewport?.addEventListener('resize', () => {
+    if (window.innerWidth >= STAGE_FRAME_MIN_W) return;
+    schedule();
+  });
 }
 function applyReduceMotion(on) {
   const stage = $('stage');
@@ -1437,8 +1470,8 @@ async function renderReaction() {
     const inst = me()?.hand?.find(x => x.instance_id === instId);
     if (!inst) continue;
     const d = await card(inst.card_id);
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'hand-card reaction-card';
-    b.dataset.instanceId = inst.instance_id; b.dataset.cardId = d.id; b.innerHTML = handCardHTML(d);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'reaction-card-btn';
+    b.dataset.instanceId = inst.instance_id; b.dataset.cardId = d.id; b.innerHTML = cardHTML(d, false);
     b.setAttribute('aria-label',`Gioca ${d.name} in risposta`);
     b.onclick = () => beginTrap(inst,d).catch(fail); choices.append(b);
   }
