@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v13** — Anche le creature **in campo** che possono muovere/attaccare hanno il bordo arcobaleno (`.can-act`).
+
+
 - **v12** — Evidenza giocabile/selezionabile: bordo **arcobaleno** (colori fazioni) su mano, Mostrissimi e celle.
 
 

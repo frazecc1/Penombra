@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v11-mostrissimi-lab',
+  version: 'v13-can-act-board',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -1578,6 +1578,13 @@ async function drawBoard() {
       b.classList.add(c ? (isMine(c.owner_index) ? 'human-card' : 'ai-card') : 'empty');
       if (c?.kind === 'terraforma') b.classList.add('terraforma-cell');
       if (isCreatureCell(c) && c.tired) b.classList.add('tired');
+      // Tue creature non stanche: evidenzia che possono muovere/attaccare (solo fuori da una scelta attiva)
+      if (
+        active() && !flow && !reaction() && !obligatory() && !pending()
+        && isCreatureCell(c) && isMine(c.owner_index) && !c.tired
+      ) {
+        b.classList.add('can-act');
+      }
       if (flow?.kind === 'move' && steps(flow.from).some(x => eq(x,pos))) b.classList.add('valid-move');
       if (flow?.kind === 'attack' && attackable(flow.from).some(x => eq(x,pos))) b.classList.add('valid-target');
       if (flow?.kind === 'hand' && flow.step === 'cell' && row === myHomeRow() && !c) b.classList.add('valid-summon');

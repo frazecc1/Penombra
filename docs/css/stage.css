@@ -612,10 +612,11 @@ body:has(#stage.calm) .narrator-medallion.bob { animation: none !important; }
 #stage .board-cell:disabled { opacity: 1; }
 #stage .board-cell.tired .cell-card { filter: grayscale(.45); opacity: .7; }
 
-/* Caselle selezionabili: cornice arcobaleno (colori fazioni) */
+/* Caselle selezionabili + creature tue che possono agire: cornice arcobaleno */
 #stage .board-cell.valid-summon,
 #stage .board-cell.valid-move,
-#stage .board-cell.valid-target {
+#stage .board-cell.valid-target,
+#stage .board-cell.can-act {
   border: 3px solid #ffffff !important;
   box-shadow:
     0 0 0 3px #ffffff,
@@ -626,7 +627,8 @@ body:has(#stage.calm) .narrator-medallion.bob { animation: none !important; }
 }
 #stage.calm .board-cell.valid-summon,
 #stage.calm .board-cell.valid-move,
-#stage.calm .board-cell.valid-target {
+#stage.calm .board-cell.valid-target,
+#stage.calm .board-cell.can-act {
   animation: none !important;
   border: 3px solid #ffffff !important;
   box-shadow:
@@ -1875,6 +1877,7 @@ body.notice-open #stage .action-panel button {
   #stage:not(.calm) .board-cell.valid-summon,
   #stage:not(.calm) .board-cell.valid-move,
   #stage:not(.calm) .board-cell.valid-target,
+  #stage:not(.calm) .board-cell.can-act,
   #stage:not(.calm) #player-hand > .hand-card.playable .fan-card,
   #stage:not(.calm) #mostrissimo-panel .mostrissimo-card.playable .fan-card {
     animation: none !important;
