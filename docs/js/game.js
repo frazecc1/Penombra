@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v7-spoglie-on-pyramid',
+  version: 'v10-attack-terraform-auto',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -653,7 +653,7 @@ function hideTargetReminder() {
  * Anteprima del permanente scelto come bersaglio → Conferma / Annulla.
  * Risolve true se confermato, false se annullato.
  */
-function confirmTargetChoice(cell, cardDef, hint = '') {
+function confirmTargetChoice(cell, cardDef, hint = '', dialogTitle = 'Conferma bersaglio') {
   return new Promise(resolve => {
     let el = $('target-confirm-dialog');
     if (!el) {
@@ -671,7 +671,7 @@ function confirmTargetChoice(cell, cardDef, hint = '') {
     panel.style.cssText = 'width:min(92vw,360px);margin:auto;padding:1.1rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
     const title = document.createElement('h2');
     title.style.cssText = 'margin:0 0 .5rem;font-size:1.15rem';
-    title.textContent = 'Conferma bersaglio';
+    title.textContent = dialogTitle;
     const sub = document.createElement('p');
     sub.style.cssText = 'margin:0 0 .6rem;opacity:.9;line-height:1.4';
     const who = isMine(cell?.owner_index) ? 'tua' : (currentMode === 'pvp' ? 'avversario' : 'IA');
@@ -1469,16 +1469,41 @@ async function inspect(kind,id,extra={}) {
     add(`Evoca · ${cost} sacrifici`,() => request('mostrissimo/start',{cardId:id},'Evocazione iniziata: non puoi annullare.'),!legal);
   }
   if (kind === 'unit' && active() && isCreatureCell(current.cell) && isMine(current.cell.owner_index) && !current.cell.tired) {
-    const direct = foes(current.position).length === 0;
+    const targets = attackable(current.position);
+    const canDirect = targets.length === 0;
     const foeName = opponentDisplayName();
-    add(direct ? `Attacca ${foeName}` : 'Attacca',() => {
-      if (direct) return request('attack',{attackerPosition:current.position,target:{type:'player',playerIndex:0}},'Attacco dichiarato.');
-      flow = {kind:'attack',from:current.position}; close(); render().catch(fail);
+    add(canDirect ? `Attacca ${foeName}` : 'Attacca', async () => {
+      // Nessun permanente adiacente → attacco diretto al giocatore
+      if (canDirect) {
+        return request('attack', {
+          attackerPosition: current.position,
+          target: { type: 'player', playerIndex: foePlayerIndex() },
+        }, 'Attacco dichiarato.');
+      }
+      // Un solo bersaglio valido (creatura o Terraforma) → conferma automatica, un click in meno
+      if (targets.length === 1) {
+        const pos = targets[0];
+        const cell = at(pos);
+        let def = null;
+        try { def = cell ? await card(cell.card_id) : null; } catch (_) { /* ignore */ }
+        const ok = await confirmTargetChoice(
+          cell,
+          def,
+          def?.name ? `${def.name}` : '',
+          'Sei sicuro di voler attaccare questa carta?',
+        );
+        if (!ok) return;
+        close();
+        return request('attack', {
+          attackerPosition: current.position,
+          target: { type: 'creature', position: pos },
+        }, 'Attacco dichiarato.');
+      }
+      // Più bersagli → scelta sulla griglia
+      flow = { kind: 'attack', from: current.position };
+      close();
+      render().catch(fail);
       showTargetReminder('Seleziona un nemico evidenziato (bordo bianco) per attaccare.');
-    });
-    if (direct && attackable(current.position).length) add('Attacca Terraforma',() => {
-      flow = {kind:'attack',from:current.position}; close(); render().catch(fail);
-      showTargetReminder('Seleziona la Terraforma nemica evidenziata (bordo bianco).');
     });
     const cost = await moveCost(current.cell);
     if (current !== view) return;

@@ -256,6 +256,13 @@ Dettaglio body e errori: vedere `api.ts`.
 
 ---
 
+### Regola attacco e Terraforme
+
+- Bersagli validi adiacenti: creature nemiche **e** Terraforme nemiche con PV.
+- Se esiste almeno un bersaglio valido, **non** si può attaccare direttamente il giocatore.
+- Se c’è **un solo** bersaglio valido, il client lo seleziona e chiede conferma («Sei sicuro di voler attaccare questa carta?»).
+- Motore: `attack()` e risoluzione evento in `engine-core.ts`; IA allineata in `aiChooseAttack`.
+
 ### Regola pesca a mazzo vuoto
 
 Se una pesca richiede N carte e il mazzo non ne ha abbastanza, per **ogni** carta mancante il giocatore perde **1 PV** (non 2). La funzione `draw()` in `engine-core.ts` applica il danno ad ogni tentativo fallito nel ciclo.
@@ -274,4 +281,4 @@ Se una pesca richiede N carte e il mazzo non ne ha abbastanza, per **ogni** cart
 
 ---
 
-*Documento allineato al lab Penombra (pesca mazzo vuoto = 1 danno/carta, v9).*
+*Documento allineato al lab Penombra (attacco/Terraforma + auto-conferma, v10).*

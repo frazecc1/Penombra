@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v10** — Attacco: Terraforma attaccabile blocca l’attacco diretto; con un solo bersaglio, conferma automatica («Sei sicuro di voler attaccare questa carta?»).
+
+
 - **v9** — Pesca a mazzo vuoto: **1 danno** per ogni carta tentata (prima erano 2).
 
 - **v7** — Il dialog «RIPRENDI le tue spoglie» esce **solo** dopo il click sulla piramide «Partita base» (non più automatico al login).

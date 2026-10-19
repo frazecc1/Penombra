@@ -667,7 +667,8 @@ async function applyEvent(c: Context, e: PendingEvent) {
       if (victim.hp <= 0) await destroyCell(c, e.target.position, p);
       await queueAuraAttackTriggers(c, attacker);
     } else {
-      if (e.target.playerIndex !== other(p) || enemyNeighbours(s, e.from, p).length) {
+      const blockers = [...enemyNeighbours(s, e.from, p), ...enemyTerraformas(s, e.from, p)];
+      if (e.target.playerIndex !== other(p) || blockers.length) {
         log(c, p, 'event_cancelled', 'Attacco diretto annullato: bersagli validi presenti.'); return;
       }
       s.players[other(p)].life -= attacker.attack; attacker.tired = true;
@@ -995,7 +996,9 @@ function aiChooseAttack(s: GameState) {
   for (const u of units(s, 0)) {
     if (u.cell.tired || u.cell.attack <= 0) continue;
     const foes = enemyNeighbours(s, u.position, 0);
-    if (!foes.length) {
+    const terras = enemyTerraformas(s, u.position, 0);
+    // Attacco diretto solo se non ci sono creature né Terraforme attaccabili adiacenti
+    if (!foes.length && !terras.length) {
       const score = u.cell.attack >= life ? 1000 : 10 + u.cell.attack * 3;
       if (!best || score > best.score) best = { score, from: u.position, instanceId: u.cell.instance_id };
       continue;
@@ -1004,6 +1007,13 @@ function aiChooseAttack(s: GameState) {
       const v = at(s, position);
       if (v?.kind !== 'creature') continue;
       const score = u.cell.attack >= v.hp ? 100 + v.attack * 3 + v.max_hp : 10 + Math.min(u.cell.attack, v.hp) * 4 + v.attack;
+      if (!best || score > best.score) best = { score, from: u.position, instanceId: u.cell.instance_id, victim: { position, id: v.instance_id } };
+    }
+    // Terraforme attaccabili: priorità inferiore alle creature, ma valide se bloccano
+    for (const position of terras) {
+      const v = at(s, position);
+      if (!v || v.kind !== 'terraforma' || v.hp === undefined) continue;
+      const score = u.cell.attack >= v.hp ? 40 + (v.hp ?? 0) : 5 + Math.min(u.cell.attack, v.hp ?? 0);
       if (!best || score > best.score) best = { score, from: u.position, instanceId: u.cell.instance_id, victim: { position, id: v.instance_id } };
     }
   }
@@ -1409,7 +1419,10 @@ export async function attack(id: string, p: PlayerIndex, from: Position, targetP
       const chosen = at(s, targetPosition.position);
       if (!chosen || (chosen.kind === 'terraforma' && chosen.hp === undefined)) throw new Error('Questo bersaglio non può essere attaccato');
       victim = chosen;
-    } else if (targetPosition.playerIndex !== other(p) || options.length) throw new Error('Attacco diretto vietato');
+    } else if (targetPosition.playerIndex !== other(p) || attackable.length) {
+      // Creature o Terraforme attaccabili adiacenti bloccano l'attacco diretto al giocatore
+      throw new Error('Attacco diretto vietato');
+    }
     prepend(s, { kind: 'declare_event', event: { kind: 'attack', actor: p, instance_id: attacker.instance_id, from, target: targetPosition, ...(victim ? { target_instance_id: victim.instance_id } : {}) } });
   });
 }
