@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v23-trap-large-detail',
+  version: 'v22-hud-detail',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -22,9 +22,6 @@ const cache = new Map();
 let state = null, matchId = null, busy = false, initialized = false, view = null, flow = null;
 /** Cella scelta per l’ingresso del Mostrissimo (fase 2), in attesa di conferma. */
 let mostEntryPick = null;
-/** Indice trappola mostrata nel dettaglio grande (finestra reattiva). */
-let trapPickIdx = 0;
-let trapPickWindowId = null;
 /** Utente ha chiuso il messaggio «dove entra» con Ho capito. */
 let mostEntryHintDismissed = false;
 /** Utente ha chiuso il messaggio iniziale sacrifici con Ho capito. */
@@ -1456,76 +1453,31 @@ async function handleMatchFinished() {
 }
 async function renderReaction() {
   const el = reactionDialog(), r = reaction();
-  // Mai il popup piccolo: nascondi sempre la reaction-dialog compatta
-  if (el) el.classList.add('hidden');
-
-  if (!r || busy || obligatory() || flow?.kind === 'trap-target') {
-    // Chiudi dettaglio trappola se la finestra non c’è più
-    if (!r && view?.kind === 'trap-pick') close();
-    if (!r) { trapPickWindowId = null; trapPickIdx = 0; }
-    return;
+  if (!r || busy || obligatory() || flow?.kind === 'trap-target') { el.classList.add('hidden'); return; }
+  $('reaction-title').textContent = r.event?.kind === 'monster_etb' || r.event?.kind === 'mostrissimo_before_entry' ? 'Finestra NOPE / Trappola' : 'Finestra Trappola';
+  const evt = r.event;
+  let declared = '';
+  if (evt?.card_id) {
+    try { const d = await card(evt.card_id);
+      declared = ` Carta: ${d.name}. Costo ${d.card_type === 'mostrissimo' ? d.sacrifice_cost + ' sacrifici' : d.mana_cost + ' mana'}. ${d.effect_text ?? ''}`;
+    } catch(e) { console.warn(e); }
   }
-
-  // Nuova finestra reattiva → riparti dalla prima trappola
-  if (trapPickWindowId !== r.window_id) {
-    trapPickWindowId = r.window_id;
-    trapPickIdx = 0;
+  const position = evt?.options?.position ?? evt?.position;
+  $('reaction-description').textContent = reactionDescription(evt) + declared
+    + (position ? ` Cella [${position.row},${position.col}].` : '');
+  const choices = $('reaction-choices'); choices.replaceChildren();
+  for (const instId of r.eligible_instance_ids ?? []) {
+    const inst = me()?.hand?.find(x => x.instance_id === instId);
+    if (!inst) continue;
+    const d = await card(inst.card_id);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'reaction-card-btn';
+    b.dataset.instanceId = inst.instance_id; b.dataset.cardId = d.id; b.innerHTML = cardHTML(d, false);
+    b.setAttribute('aria-label',`Gioca ${d.name} in risposta`);
+    b.onclick = () => beginTrap(inst,d).catch(fail); choices.append(b);
   }
-
-  await showTrapPickLarge(r);
-}
-
-/** Finestra trappola in stile dettaglio grande (Annulla/Passa + Conferma Trappola). */
-async function showTrapPickLarge(r) {
-  const ids = (r.eligible_instance_ids ?? []).filter(id => me()?.hand?.some(x => x.instance_id === id));
-  const bar = $('detail-actions');
-  const img = $('detail-image');
-  if (!bar || !img) return;
-
-  overlay();
-  bar.replaceChildren();
-  const add = (text, fn, disabled = false) => bar.append(button(text, fn, disabled));
-
-  if (!ids.length) {
-    // Nessuna trappola giocabile: solo passa
-    view = { kind: 'trap-pick' };
-    img.innerHTML = `<div class="trap-pass-only" style="padding:1.5rem;text-align:center">
-      <h2 style="margin:0 0 .5rem;color:#f0d28f">Finestra Trappola</h2>
-      <p style="margin:0 0 1rem;line-height:1.4">${escape(reactionDescription(r.event) || 'L’avversario ha dichiarato un’azione.')}</p>
-      <p class="muted" style="margin:0">Nessuna trappola giocabile in mano.</p>
-    </div>`;
-    add('Passa', () => chooseTrap({ windowId: r.window_id, action: 'pass' }));
-    $('card-detail-overlay')?.classList.remove('hidden');
-    document.body.classList.add('detail-open');
-    return;
-  }
-
-  if (trapPickIdx >= ids.length) trapPickIdx = 0;
-  const instId = ids[trapPickIdx];
-  const inst = me()?.hand?.find(x => x.instance_id === instId);
-  if (!inst) return;
-  const d = await card(inst.card_id);
-  view = { kind: 'trap-pick', instanceId: inst.instance_id, id: d.id };
-  updateCardPreview(d, null);
-  img.innerHTML = cardHTML(d, false);
-
-  if (ids.length > 1) {
-    add('← Altra', () => {
-      trapPickIdx = (trapPickIdx - 1 + ids.length) % ids.length;
-      showTrapPickLarge(r).catch(fail);
-    });
-    add(`Trappola ${trapPickIdx + 1}/${ids.length}`, () => {}, true);
-    add('Altra →', () => {
-      trapPickIdx = (trapPickIdx + 1) % ids.length;
-      showTrapPickLarge(r).catch(fail);
-    });
-  }
-
-  add('Annulla', () => chooseTrap({ windowId: r.window_id, action: 'pass' }));
-  add('Conferma Trappola', () => beginTrap(inst, d));
-
-  $('card-detail-overlay')?.classList.remove('hidden');
-  document.body.classList.add('detail-open');
+  const actions = $('reaction-actions'); actions.replaceChildren();
+  actions.append(button('Passa',() => chooseTrap({windowId:r.window_id,action:'pass'})));
+  el.classList.remove('hidden');
 }
 async function chooseTrap(choice) {
   const r = reaction();
@@ -1538,15 +1490,7 @@ async function beginTrap(inst,d) {
   if (targetEffect(d)) {
     flow = {kind:'trap-target',windowId:r.window_id,instanceId:inst.instance_id,id:d.id};
     reactionDialog().classList.add('hidden');
-    close(); // chiudi dettaglio grande mentre si sceglie il bersaglio
-    await render();
-    notice(
-      r.event?.kind === 'monster_etb'
-        ? 'Scegli la creatura che ha generato l’effetto all’entrata.'
-        : `Scegli il bersaglio di ${d.name}${playerTargetEffect(d) ? ' (tocca i PV dell’IA per colpire il giocatore)' : ''}.`,
-      'success',
-    );
-    return;
+    await render(); notice(r.event?.kind === 'monster_etb' ? 'Scegli la creatura che ha generato l’effetto all’entrata.' : `Scegli il bersaglio di ${d.name}${playerTargetEffect(d) ? ' (tocca i PV dell’IA per colpire il giocatore)' : ''}.`, 'success'); return;
   }
   await chooseTrap({windowId:r.window_id,action:'play',cardInstanceId:inst.instance_id});
 }
@@ -1632,7 +1576,7 @@ function updateCardPreview(d, cell = null) {
   slot.setAttribute('aria-hidden', 'false');
 }
 async function inspect(kind,id,extra={}) {
-  if (busy || noticeOpen || obligatory() || (reaction() && kind !== 'grave' && kind !== 'trap-pick')) return;
+  if (busy || noticeOpen || obligatory() || (reaction() && kind !== 'grave')) return;
   view = {kind,id,...extra};
   const current = view, d = await card(id);
   if (current !== view) return;
