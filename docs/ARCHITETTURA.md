@@ -313,3 +313,6 @@ Layout desktop: `.stage-frame` grid `1fr auto 1fr`; board-cell `contain:layout s
 
 
 HUD: `.hud-name-row` colonna fissa (nome + chip); `.ai-hud`/`.player-hud` stessa altezza per evitare reflow.
+
+
+Finestra reattiva: `showTrapPickLarge` usa `#card-detail-overlay` (stesso UI di ispezione carta); più trappole → frecce Altra.

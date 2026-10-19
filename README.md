@@ -17,6 +17,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v23** — Finestra Trappola solo in **dettaglio grande** (Conferma Trappola / Annulla=Passa); eliminato il popup compatto.
+
+
 * **v22** — HUD nome IA/giocatore a **2 righe fisse** (niente saltello); carta dettaglio al centro **più grande**.
 
 
