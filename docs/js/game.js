@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v20-stable-layout-large-cards',
+  version: 'v21-columns-board-lock',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,

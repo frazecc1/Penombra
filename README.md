@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v21** — Colonne laterali simmetriche (grid 1fr/auto/1fr); niente «Anteprima carta»; popup senza scroll; griglia bloccata (niente saltello all’ingresso carte).
+
+
 - **v20** — Layout stabile: colonna centrale fissa al centro; colonne laterali simmetriche; carte grandi in trappole/dialoghi; meno saltelli di scala.
 
 

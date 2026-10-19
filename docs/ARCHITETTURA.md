@@ -307,3 +307,6 @@ Dialog UI: `showHoCapitoDialog` / `showGameConfirmDialog` su `#game-dialog-overl
 
 
 Layout: `fitStage` fissa `#stage` a 455×768×unit al centro; laterali `flex:1` simmetrici se viewport ≥1100px; mobile solo colonna centrale.
+
+
+Layout desktop: `.stage-frame` grid `1fr auto 1fr`; board-cell `contain:layout size` + overflow hidden per evitare saltelli.
