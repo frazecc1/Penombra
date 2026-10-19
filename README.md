@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v16** — Fix cella ingresso Mostrissimo; popup centrati; banner istruzioni sacrifici Y/X leggibile.
+
+
 - **v15** — Sacrifici Mostrissimo sulla **griglia**: tap sul permanente; se ha aura, scegli mostro o aura. Niente lista a schermo.
 
 

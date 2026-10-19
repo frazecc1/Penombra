@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v15-tribute-on-grid',
+  version: 'v16-entry-fix-banner',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -704,6 +704,7 @@ function confirmTargetChoice(cell, cardDef, hint = '', dialogTitle = 'Conferma b
     actions.append(cancel, confirm);
     panel.append(title, sub, preview, actions);
     el.append(panel);
+    el.style.cssText = 'position:fixed;inset:0;z-index:160;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(5,5,11,.82);';
     el.classList.remove('hidden');
   });
 }
@@ -1614,6 +1615,7 @@ function showSacrificeOptions(options, titleText) {
     cancel.onclick = () => done(null);
     panel.append(title, sub, list, cancel);
     el.append(panel);
+    el.style.cssText = 'position:fixed;inset:0;z-index:165;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(5,5,11,.82);';
     el.classList.remove('hidden');
   });
 }
@@ -1672,6 +1674,44 @@ async function pickTributeFromCell(cell) {
   return request('mostrissimo/sacrifice', { instanceId: cell.instance_id }, 'Sacrificio dichiarato.');
 }
 
+
+
+/** Banner istruzioni Mostrissimo (centro stage, leggibile). */
+function ensureMostInstructionBanner() {
+  let el = $('mostrissimo-instruction-banner');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'mostrissimo-instruction-banner';
+  el.className = 'mostrissimo-instruction-banner hidden';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  const stage = $('stage') || document.body;
+  stage.append(el);
+  return el;
+}
+function updateMostInstructionBanner(p) {
+  const el = ensureMostInstructionBanner();
+  if (!p || p.stage !== 'paying') {
+    el.classList.add('hidden');
+    el.innerHTML = '';
+    return;
+  }
+  const paused = !!(reaction() || obligatory());
+  const y = p.paid.length;
+  const x = p.required;
+  el.classList.remove('hidden');
+  if (paused) {
+    el.innerHTML = `<strong>In risoluzione…</strong><span>${y}/${x} sacrificati finora</span>`;
+    return;
+  }
+  if (y < x) {
+    el.innerHTML = `<strong>Sacrifica ${x} permanent${x === 1 ? 'e' : 'i'} evidenziat${x === 1 ? 'o' : 'i'}</strong>`
+      + `<span>${y}/${x} sacrificati finora · tocca la plancia</span>`;
+  } else {
+    el.innerHTML = `<strong>Scegli dove entra il Mostrissimo</strong>`
+      + `<span>Tocca una cella libera evidenziata, poi conferma</span>`;
+  }
+}
 
 function hideMostrissimoFlowOverlay() {
   const el = $('mostrissimo-flow-overlay');
@@ -1766,7 +1806,8 @@ async function drawBoard() {
       b.innerHTML = altar + (c && definition ? cellHTML(definition,c) + (isCreatureCell(c) && c.auras?.length ? `<span class="cell-aura-count" title="Aure assegnate">✧ ${c.auras.length}</span>` : '') + `<span class="cell-coordinate">[${row},${col}]</span>` : '');
       // Durante etb-target le celle eleggibili restano cliccabili anche se obligatory.
       const etbPick = flow?.kind === 'etb-target' && c && (flow.eligible ?? []).includes(c.instance_id);
-      b.disabled = busy || (obligatory() && !etbPick);
+      const mostPayCell = pending()?.stage === 'paying';
+      b.disabled = (busy && !mostPayCell) || (obligatory() && !etbPick && !mostPayCell);
       b.onclick = () => boardClick(pos).catch(fail); line.append(b);
     }
     root.append(line);
@@ -1802,7 +1843,7 @@ async function drawMostrissimi() {
     if (slot) slot.append(panel); else if (before?.parentNode) before.parentNode.insertBefore(panel,before); else document.body.append(panel);
   }
   panel.replaceChildren();
-  if (!state) { panel.classList.add('hidden'); return; }
+  if (!state) { panel.classList.add('hidden'); updateMostInstructionBanner(null); return; }
   panel.classList.remove('hidden');
 
   const p = pending();
@@ -1811,7 +1852,9 @@ async function drawMostrissimi() {
     const paused = !!(reaction() || obligatory());
     const need = p.required - p.paid.length;
 
-    // Pannello laterale: solo progresso (la scelta è sulla griglia)
+    updateMostInstructionBanner(p);
+
+    // Pannello laterale: riassunto compatto
     const h = document.createElement('h2');
     h.textContent = p.paid.length < p.required ? '1. Sacrifici' : '2. Ingresso';
     panel.append(h);
@@ -1850,6 +1893,7 @@ async function drawMostrissimi() {
     ov.classList.remove('hidden');
     // Non oscurare tutta la griglia: foglio in basso
     ov.classList.add('mostrissimo-flow-overlay--entry');
+    ov.classList.remove('mostrissimo-flow-overlay--bottom');
     const sheet = document.createElement('div');
     sheet.className = 'mostrissimo-flow-sheet mostrissimo-flow-sheet--compact';
     const title = document.createElement('h2');
@@ -1898,6 +1942,7 @@ async function drawMostrissimi() {
 
   hideMostrissimoFlowOverlay();
   mostEntryPick = null;
+  updateMostInstructionBanner(null);
 
   // Offerta normale (nessuna evocazione in corso)
   const h = document.createElement('h2'); h.textContent = 'Offerta'; panel.append(h);
@@ -2316,12 +2361,32 @@ async function playerClick() {
   }
 }
 async function boardClick(pos) {
-  // Durante scelta ETB / attacco / movimento non perdere i click se busy è ancora true un attimo.
-  const allowWhileBusy = flow?.kind === 'etb-target' || flow?.kind === 'mostrissimo-target'
+  // Durante scelta ETB / attacco / movimento / sacrifici Mostrissimo non perdere i click.
+  const mostPaying = pending()?.stage === 'paying';
+  const allowWhileBusy = mostPaying || flow?.kind === 'etb-target' || flow?.kind === 'mostrissimo-target'
     || flow?.kind === 'attack' || flow?.kind === 'move' || flow?.kind === 'hand';
   if (busy && !allowWhileBusy) return;
-  if (noticeOpen && flow?.kind !== 'etb-target' && flow?.kind !== 'attack' && flow?.kind !== 'move') return;
-  if (obligatory() && flow?.kind !== 'etb-target') return;
+  if (noticeOpen && !mostPaying && flow?.kind !== 'etb-target' && flow?.kind !== 'attack' && flow?.kind !== 'move') return;
+  // Sacrifici / ingresso Mostrissimo hanno priorità sulle altre scelte obbligatorie residue
+  if (obligatory() && flow?.kind !== 'etb-target' && !mostPaying) return;
+
+  // Mostrissimo: gestisci SUBITO (prima di flow bersaglio / reminder confusi)
+  if (mostPaying && !reaction()) {
+    const c0 = at(pos);
+    const p0 = pending();
+    if (p0.paid.length < p0.required) {
+      if (!c0) return notice('Tocca un tuo permanente evidenziato da sacrificare.', 'error');
+      return pickTributeFromCell(c0);
+    }
+    // Fase 2: cella di ingresso
+    if (c0 || !summonCells(p0).some(x => eq(x, pos))) {
+      return notice('Tocca una cella libera evidenziata per far entrare il Mostrissimo.', 'error');
+    }
+    mostEntryPick = { row: pos.row, col: pos.col };
+    await render();
+    return;
+  }
+
   if (flow?.kind === 'etb-target') {
     const c = at(pos);
     if (!c || !(flow.eligible ?? []).includes(c.instance_id)) {
@@ -2366,16 +2431,8 @@ async function boardClick(pos) {
     if (!ok) return;
     return request('mostrissimo/complete',{position:flow.position,targetInstanceId:c.instance_id},'Mostrissimo dichiarato.');
   }
-  if (p) {
-    if (p.stage !== 'paying') return;
-    if (p.paid.length < p.required) {
-      if (!c) return notice('Tocca un tuo permanente sul campo da sacrificare.', 'error');
-      return pickTributeFromCell(c);
-    }
-    // Fase 2: seleziona cella, conferma dall’overlay
-    if (c || !summonCells(p).some(x => eq(x, pos))) return notice('Cella non valida.', 'error');
-    mostEntryPick = { row: pos.row, col: pos.col };
-    await render();
+  if (p && p.stage === 'paying') {
+    // Già gestito in cima a boardClick
     return;
   }
   if (flow?.kind === 'hand') {

@@ -2672,16 +2672,51 @@ body.notice-open #stage .action-panel button {
 
 /* Fase 2 ingresso: overlay non copre tutta la griglia */
 #stage .mostrissimo-flow-overlay.mostrissimo-flow-overlay--entry {
-  align-items: flex-end;
-  background: linear-gradient(to top, rgba(8,6,4,0.85) 0%, rgba(8,6,4,0.25) 55%, transparent 100%);
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 4, 0.55);
   pointer-events: none;
 }
 #stage .mostrissimo-flow-overlay.mostrissimo-flow-overlay--entry .mostrissimo-flow-sheet {
   pointer-events: auto;
-  max-height: 40%;
-  margin-bottom: 0.35rem;
+  max-height: 50%;
+  margin: auto;
 }
 #stage .mostrissimo-flow-sheet--compact {
   width: min(100%, 360px);
   padding: 0.65rem 0.7rem 0.75rem;
+}
+
+
+/* Banner istruzioni Mostrissimo — centro alto della colonna */
+#stage .mostrissimo-instruction-banner {
+  position: absolute;
+  left: 50%;
+  top: 0.55rem;
+  transform: translateX(-50%);
+  z-index: 130;
+  width: min(94%, 380px);
+  padding: 0.65rem 0.85rem;
+  border: 2px solid var(--tomb-gold, #c9a043);
+  border-radius: 0.65rem;
+  background: linear-gradient(180deg, #1f1810 0%, #120e0a 100%);
+  box-shadow: 0 10px 32px #000a, 0 0 0 1px #0008;
+  color: var(--tomb-text, #efe2c0);
+  text-align: center;
+  pointer-events: none;
+}
+#stage .mostrissimo-instruction-banner.hidden { display: none !important; }
+#stage .mostrissimo-instruction-banner strong {
+  display: block;
+  font-family: var(--font-title, "Lilita One", Georgia, serif);
+  font-size: 1.05rem;
+  color: var(--tomb-gold-light, #e8c565);
+  margin-bottom: 0.25rem;
+  line-height: 1.25;
+}
+#stage .mostrissimo-instruction-banner span {
+  display: block;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  opacity: 0.95;
 }

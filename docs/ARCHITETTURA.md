@@ -291,3 +291,7 @@ Fase 1: overlay lista permanenti (`#mostrissimo-flow-overlay` su `#stage`, colon
 ---
 
 *Documento allineato al lab Penombra (bordo arcobaleno giocabili, v12).*
+
+
+### Banner istruzioni Mostrissimo
+`#mostrissimo-instruction-banner` su `#stage`: testo tipo «Sacrifica X permanenti… Y/X sacrificati finora».
