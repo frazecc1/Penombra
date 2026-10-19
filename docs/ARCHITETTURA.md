@@ -256,6 +256,10 @@ Dettaglio body e errori: vedere `api.ts`.
 
 ---
 
+### Regola pesca a mazzo vuoto
+
+Se una pesca richiede N carte e il mazzo non ne ha abbastanza, per **ogni** carta mancante il giocatore perde **1 PV** (non 2). La funzione `draw()` in `engine-core.ts` applica il danno ad ogni tentativo fallito nel ciclo.
+
 ## 9. Glossario rapido
 
 | Termine | Significato |
@@ -270,4 +274,4 @@ Dettaglio body e errori: vedere `api.ts`.
 
 ---
 
-*Documento allineato al lab Penombra (persistenza matches + spoglie solo su piramide base v7).*
+*Documento allineato al lab Penombra (pesca mazzo vuoto = 1 danno/carta, v9).*

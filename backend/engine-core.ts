@@ -107,8 +107,9 @@ function draw(c: Context, p: PlayerIndex, count: number) {
     const card = c.s.players[p].deck.shift();
     if (card) { c.s.players[p].hand.push(card); taken++; }
     else {
-      c.s.players[p].life -= 2;
-      log(c, p, 'empty_draw_damage', `${label(p)} subisce 2 danni per una pesca a mazzo vuoto.`, { amount: 2 });
+      // 1 danno per ogni carta che non si riesce a pescare (mazzo vuoto)
+      c.s.players[p].life -= 1;
+      log(c, p, 'empty_draw_damage', `${who(c.s, p)} subisce 1 danno per una pesca a mazzo vuoto.`, { amount: 1 });
       checkWinner(c, 'PV esauriti dopo una pesca impossibile.');
     }
   }
