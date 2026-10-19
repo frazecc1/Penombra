@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v16-entry-fix-banner',
+  version: 'v17-entry-ho-capito',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -22,6 +22,8 @@ const cache = new Map();
 let state = null, matchId = null, busy = false, initialized = false, view = null, flow = null;
 /** Cella scelta per l’ingresso del Mostrissimo (fase 2), in attesa di conferma. */
 let mostEntryPick = null;
+/** Utente ha chiuso il messaggio «dove entra» con Ho capito. */
+let mostEntryHintDismissed = false;
 let deathDraft = { choiceId: null, instanceIds: [] };
 let presentationRunning = false, presentationGeneration = 0;
 let lastPhaseKey = null; // scandisce ogni cambio fase anche se vuota
@@ -1546,6 +1548,67 @@ function tributeOptions() {
   }));
 }
 
+
+/** Conferma ingresso su cella scelta (dialog centrato, non permanente sulla griglia). */
+let mostEntryConfirmOpen = false;
+async function showMostrissimoEntryConfirm(pos) {
+  if (mostEntryConfirmOpen || busy || !pos) return;
+  mostEntryConfirmOpen = true;
+  try {
+    const label = `[${pos.row}, ${pos.col}]`;
+    const ok = await new Promise(resolve => {
+      let el = $('mostrissimo-entry-confirm');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'mostrissimo-entry-confirm';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-modal', 'true');
+        document.body.append(el);
+      }
+      el.style.cssText = 'position:fixed;inset:0;z-index:170;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(5,5,11,.82);';
+      el.innerHTML = '';
+      const panel = document.createElement('div');
+      panel.className = 'panel';
+      panel.style.cssText = 'width:min(92vw,360px);margin:auto;padding:1.1rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
+      const title = document.createElement('h2');
+      title.style.cssText = 'margin:0 0 .5rem;font-size:1.15rem';
+      title.textContent = 'Conferma ingresso';
+      const sub = document.createElement('p');
+      sub.style.cssText = 'margin:0 0 .85rem;line-height:1.4';
+      sub.textContent = `Evocare il Mostrissimo sulla cella ${label}?`;
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap';
+      const done = (v) => {
+        el.classList.add('hidden');
+        el.innerHTML = '';
+        resolve(v);
+      };
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'secondary-button';
+      cancel.textContent = 'Cambia cella';
+      cancel.onclick = () => done(false);
+      const conf = document.createElement('button');
+      conf.type = 'button';
+      conf.className = 'primary-button';
+      conf.textContent = 'Conferma';
+      conf.onclick = () => done(true);
+      actions.append(cancel, conf);
+      panel.append(title, sub, actions);
+      el.append(panel);
+      el.classList.remove('hidden');
+    });
+    if (ok) {
+      await confirmMostrissimoEntry(pos);
+    } else {
+      mostEntryPick = null;
+      await render();
+    }
+  } finally {
+    mostEntryConfirmOpen = false;
+  }
+}
+
 /** Completa l’evocazione Mostrissimo sulla cella (dopo conferma utente). */
 async function confirmMostrissimoEntry(pos) {
   const p = pending();
@@ -1707,9 +1770,11 @@ function updateMostInstructionBanner(p) {
   if (y < x) {
     el.innerHTML = `<strong>Sacrifica ${x} permanent${x === 1 ? 'e' : 'i'} evidenziat${x === 1 ? 'o' : 'i'}</strong>`
       + `<span>${y}/${x} sacrificati finora · tocca la plancia</span>`;
+  } else if (!mostEntryHintDismissed) {
+    el.innerHTML = `<strong>Ingresso</strong><span>Leggi il messaggio e premi Ho capito</span>`;
   } else {
-    el.innerHTML = `<strong>Scegli dove entra il Mostrissimo</strong>`
-      + `<span>Tocca una cella libera evidenziata, poi conferma</span>`;
+    el.innerHTML = `<strong>Seleziona la cella di evocazione</strong>`
+      + `<span>Tocca una cella libera evidenziata</span>`;
   }
 }
 
@@ -1883,65 +1948,68 @@ async function drawMostrissimi() {
 
     // Fase 1: niente overlay a lista — griglia libera
     if (p.paid.length < p.required) {
+      mostEntryHintDismissed = false;
+      mostEntryPick = null;
       hideMostrissimoFlowOverlay();
       return;
     }
 
-    // Fase 2: overlay compatto solo per conferma ingresso
-    const ov = ensureMostrissimoFlowOverlay();
-    ov.innerHTML = '';
-    ov.classList.remove('hidden');
-    // Non oscurare tutta la griglia: foglio in basso
-    ov.classList.add('mostrissimo-flow-overlay--entry');
-    ov.classList.remove('mostrissimo-flow-overlay--bottom');
-    const sheet = document.createElement('div');
-    sheet.className = 'mostrissimo-flow-sheet mostrissimo-flow-sheet--compact';
-    const title = document.createElement('h2');
-    title.id = 'mostrissimo-flow-title';
-    title.textContent = '2 · Dove entra';
-    const body = document.createElement('div');
-    body.className = 'mostrissimo-flow-body';
+    // Fase 2: griglia libera; un solo messaggio «Ho capito», poi scelta cella
     const cells = summonCells(p);
-    if (cells.length === 1 && !mostEntryPick) {
-      mostEntryPick = { row: cells[0].row, col: cells[0].col };
-    }
-    const lead2 = document.createElement('p');
-    lead2.className = 'mostrissimo-flow-lead';
+    hideMostrissimoFlowOverlay();
+
     if (!cells.length) {
-      lead2.textContent = 'Nessuna cella legale.';
-      body.append(lead2);
-    } else if (mostEntryPick) {
-      lead2.innerHTML = `Cella <strong>[${mostEntryPick.row}, ${mostEntryPick.col}]</strong>`
-        + (cells.length === 1 ? ' <span class="muted">(unica)</span>' : '');
+      // Nessuna cella: messaggio nel banner
+      return;
+    }
+
+    // Messaggio una tantum, non resta in sovraimpressione sulla griglia
+    if (!mostEntryHintDismissed) {
+      const ov = ensureMostrissimoFlowOverlay();
+      ov.innerHTML = '';
+      ov.classList.remove('hidden');
+      ov.classList.add('mostrissimo-flow-overlay--entry');
+      const sheet = document.createElement('div');
+      sheet.className = 'mostrissimo-flow-sheet mostrissimo-flow-sheet--compact';
+      const title = document.createElement('h2');
+      title.id = 'mostrissimo-flow-title';
+      title.textContent = 'Ingresso';
+      const lead = document.createElement('p');
+      lead.className = 'mostrissimo-flow-lead';
+      lead.textContent = 'Ora seleziona dove vuoi evocare la creatura.';
       const actions = document.createElement('div');
       actions.className = 'mostrissimo-flow-actions';
-      const conf = document.createElement('button');
-      conf.type = 'button';
-      conf.className = 'primary-button';
-      conf.textContent = 'Conferma ingresso';
-      conf.disabled = busy;
-      conf.onclick = () => confirmMostrissimoEntry(mostEntryPick).catch(fail);
-      actions.append(conf);
-      if (cells.length > 1) {
-        const change = document.createElement('button');
-        change.type = 'button';
-        change.className = 'secondary-button';
-        change.textContent = 'Cambia cella';
-        change.onclick = () => { mostEntryPick = null; render().catch(fail); };
-        actions.append(change);
-      }
-      body.append(lead2, actions);
-    } else {
-      lead2.textContent = 'Tocca una cella libera evidenziata.';
-      body.append(lead2);
+      const ok = document.createElement('button');
+      ok.type = 'button';
+      ok.className = 'primary-button';
+      ok.textContent = 'Ho capito';
+      ok.onclick = () => {
+        mostEntryHintDismissed = true;
+        hideMostrissimoFlowOverlay();
+        // Unica cella legale → pre-seleziona e chiedi conferma
+        if (cells.length === 1) {
+          mostEntryPick = { row: cells[0].row, col: cells[0].col };
+          showMostrissimoEntryConfirm(mostEntryPick).catch(fail);
+        } else {
+          render().catch(fail);
+        }
+      };
+      actions.append(ok);
+      sheet.append(title, lead, actions);
+      ov.append(sheet);
+      return;
     }
-    sheet.append(title, body);
-    ov.append(sheet);
+
+    // Dopo «Ho capito»: nessun overlay fisso; conferma solo se c’è una cella già scelta
+    if (mostEntryPick) {
+      showMostrissimoEntryConfirm(mostEntryPick).catch(fail);
+    }
     return;
   }
 
   hideMostrissimoFlowOverlay();
   mostEntryPick = null;
+  mostEntryHintDismissed = false;
   updateMostInstructionBanner(null);
 
   // Offerta normale (nessuna evocazione in corso)
@@ -2378,12 +2446,15 @@ async function boardClick(pos) {
       if (!c0) return notice('Tocca un tuo permanente evidenziato da sacrificare.', 'error');
       return pickTributeFromCell(c0);
     }
-    // Fase 2: cella di ingresso
+    // Fase 2: cella di ingresso (dopo «Ho capito»)
+    if (!mostEntryHintDismissed) {
+      return notice('Prima premi «Ho capito» sul messaggio.', 'error');
+    }
     if (c0 || !summonCells(p0).some(x => eq(x, pos))) {
       return notice('Tocca una cella libera evidenziata per far entrare il Mostrissimo.', 'error');
     }
     mostEntryPick = { row: pos.row, col: pos.col };
-    await render();
+    await showMostrissimoEntryConfirm(mostEntryPick);
     return;
   }
 

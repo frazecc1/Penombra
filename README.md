@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v17** — Fase «dove entra»: messaggio *Ora seleziona dove vuoi evocare la creatura* + **Ho capito** (niente overlay fisso sulla griglia).
+
+
 - **v16** — Fix cella ingresso Mostrissimo; popup centrati; banner istruzioni sacrifici Y/X leggibile.
 
 

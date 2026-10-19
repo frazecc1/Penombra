@@ -295,3 +295,6 @@ Fase 1: overlay lista permanenti (`#mostrissimo-flow-overlay` su `#stage`, colon
 
 ### Banner istruzioni Mostrissimo
 `#mostrissimo-instruction-banner` su `#stage`: testo tipo «Sacrifica X permanenti… Y/X sacrificati finora».
+
+
+Fase ingresso Mostrissimo: dialog una tantum «Ora seleziona dove vuoi evocare la creatura» + Ho capito; poi griglia libera e conferma sulla cella.
