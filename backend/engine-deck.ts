@@ -8,6 +8,9 @@ import { listCardData } from './engine-storage.js';
 import { allSeedCards } from './catalog-seed.js';
 import { engineErrors } from './card-rules.js';
 
+/** Slot placeholder quando l'offerta non ha abbastanza Mostrissimi reali. */
+export const INACCESSIBLE_MOSTRISSIMO_ID = 'lab-mostrissimo-inaccessible';
+
 // Effetto con trigger valido per Aure ("equipped_creature_attacks") e Terraforme ("own_monster_summoned").
 function triggeredOk(e: EffectDefinition, allowed: string[]) {
   if (!e.trigger || !allowed.includes(e.trigger) || !Number.isInteger(e.amount) || Number(e.amount) < 0 || Number(e.amount) > 20) return false;
@@ -178,11 +181,24 @@ export function deck(pool: DeckCard[], colors: DeckColors): CardInstance[] {
   return shuffle(best.map(x => ({ instance_id: randomUUID(), card_id: x.id })));
 }
 export async function offer() {
-  const data = allSeedCards().filter(c => c.card_type === 'mostrissimo');
+  // Catalogo completo (Supabase + seed); esclude il placeholder INACCESSIBILE dal pool giocabile
+  const data = (await listCardData()).filter(
+    c => c.card_type === 'mostrissimo' && c.id !== INACCESSIBLE_MOSTRISSIMO_ID,
+  );
   const valid = data.filter(x => engineErrors(x).length === 0);
-  if (valid.length < data.length) console.warn(`Mostrissimi non validi: ${data.filter(x => !valid.includes(x)).map(x => x.id).join(', ')}`);
-  const ids = shuffle((valid.length >= 3 ? valid : data).map(x => String(x.id)));
-  return { shared: ids.slice(0, 3).map(card_id => ({ card_id, instance_id: randomUUID() })), remaining: ids.slice(3) };
+  if (valid.length < data.length) {
+    console.warn(
+      `Mostrissimi non validi: ${data.filter(x => !valid.includes(x)).map(x => x.id).join(', ')}`,
+    );
+  }
+  const pool = valid.length >= 3 ? valid : data;
+  const ids = shuffle(pool.map(x => String(x.id)));
+  const shared = ids.slice(0, 3).map(card_id => ({ card_id, instance_id: randomUUID() }));
+  // Sempre 3 slot: se il pool è corto, riempi con INACCESSIBILE
+  while (shared.length < 3) {
+    shared.push({ card_id: INACCESSIBLE_MOSTRISSIMO_ID, instance_id: randomUUID() });
+  }
+  return { shared, remaining: ids.slice(3) };
 }
 export function player(index: PlayerIndex, userId: string | null, deckCards: CardInstance[]): PlayerState {
   return { player_index: index, user_id: userId, life: 20, max_mana: 0, current_mana: 0, deck: deckCards, hand: [], graveyard: [], extra_deck: [], color_counters: { CHI: 0, INF: 0, PES: 0, BUL: 0, GRO: 0, CLO: 0, IND: 0 } };

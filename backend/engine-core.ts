@@ -15,10 +15,23 @@ import {
   permanentsOnBoard, phaseNumber, playerTargetId, prepend, put, reactionTrigger, shuffle, supported, target, targetChoices, targeted, units, valid, validTarget,
 } from './engine-board.js';
 import { commit, getCardData, load, logMatchAction, saveGameState } from './engine-storage.js';
-import { availableFactions, bossFactions, chosenColors, deck, deckPool, offer, playableEffects, player, randomColors } from './engine-deck.js';
+import { availableFactions, bossFactions, chosenColors, deck, deckPool, offer, playableEffects, player, randomColors, INACCESSIBLE_MOSTRISSIMO_ID } from './engine-deck.js';
 export { getCardData, logMatchAction, saveGameState } from './engine-storage.js';
 
 type Context = { id: string; s: GameState; logs: MatchLogEntry[]; deaths: DeathTriggerSource[] };
+
+/** Mantiene sempre 3 slot in offerta: pesca da remaining, altrimenti INACCESSIBILE. */
+function refillMostrissimiOffer(s: GameState) {
+  while (s.shared_mostrissimi.length < 3) {
+    const next = s.remaining_mostrissimi.shift();
+    if (next && next !== INACCESSIBLE_MOSTRISSIMO_ID) {
+      s.shared_mostrissimi.push({ instance_id: randomUUID(), card_id: next });
+    } else {
+      s.shared_mostrissimi.push({ instance_id: randomUUID(), card_id: INACCESSIBLE_MOSTRISSIMO_ID });
+    }
+  }
+}
+
 function log(c: Context, owner: number, action: string, description: string, extra: Partial<MatchLogEntry> = {}) {
   c.logs.push({ turn: c.s.current_turn, phase: c.s.phase, player_index: owner, action_type: action, description, ...extra });
 }
@@ -699,8 +712,7 @@ async function applyEvent(c: Context, e: PendingEvent) {
     const d = await getCardData(e.card_id);
     s.shared_mostrissimi = s.shared_mostrissimi.filter(x => x.instance_id !== offered.instance_id);
     s.used_mostrissimi.push(d.id);
-    const replacement = s.remaining_mostrissimi.shift();
-    if (replacement) s.shared_mostrissimi.push({ instance_id: randomUUID(), card_id: replacement });
+    refillMostrissimiOffer(s);
     put(s, e.position, { instance_id: offered.instance_id, card_id: d.id, kind: 'creature', owner_index: p,
       attack: Number(d.attack ?? 0), hp: Number(d.hp ?? 1), max_hp: Number(d.hp ?? 1), tired: !keyword(d, 'iperattivo'), auras: [] });
     await reconcilePassives(c);
@@ -1432,6 +1444,7 @@ export async function startMostrissimoSummon(id: string, p: PlayerIndex, cardId:
     if (s.last_mostrissimo_turn[p] === s.current_turn) throw new Error('Hai già tentato un Mostrissimo in questo turno');
     const offered = s.shared_mostrissimi.find(x => x.card_id === cardId);
     if (!offered) throw new Error('Mostrissimo non presente nell’offerta');
+    if (cardId === INACCESSIBLE_MOSTRISSIMO_ID) throw new Error('Questo slot è inaccessibile');
     const d = await getCardData(cardId), required = Number(d.sacrifice_cost);
     if (d.card_type !== 'mostrissimo' || !Number.isInteger(required) || required < 0 || required > 6) throw new Error('Costo in sacrifici non valido');
     if (permanents(s, p).length < required) throw new Error('Non hai abbastanza permanenti');

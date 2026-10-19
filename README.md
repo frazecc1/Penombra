@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v11b** — SQL Mostrissimi: constraint `faction_code` allargato a **IND** (fixava l’insert).
+
+
 - **v10** — Attacco: Terraforma attaccabile blocca l’attacco diretto; con un solo bersaglio, conferma automatica («Sei sicuro di voler attaccare questa carta?»).
 
 

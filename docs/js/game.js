@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v10-attack-terraform-auto',
+  version: 'v11-mostrissimi-lab',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -1682,14 +1682,34 @@ async function drawMostrissimi() {
   panel.classList.remove('hidden');
   const strip = document.createElement('div'); strip.className = 'mostrissimo-offer'; panel.append(strip);
   for (const inst of state.shared_mostrissimi ?? []) {
-    const d = await card(inst.card_id), b = document.createElement('button');
-    b.type = 'button'; b.className = 'mostrissimo-card'; b.innerHTML = handCardHTML(d);
+    const isBlocked = inst.card_id === 'lab-mostrissimo-inaccessible';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mostrissimo-card';
+    if (isBlocked) {
+      b.classList.add('mostrissimo-inaccessible');
+      b.innerHTML = '<article class="hand-card is-inaccessible" style="background:#0a0a0a;color:#666;border-color:#222;min-height:7.5rem;display:flex;align-items:center;justify-content:center;text-align:center;padding:.5rem"><strong style="letter-spacing:.06em;font-size:.85rem">INACCESSIBILE</strong></article>';
+      b.disabled = true;
+      b.setAttribute('aria-label', 'Slot Mostrissimo inaccessibile');
+      strip.append(b);
+      continue;
+    }
+    let d;
+    try { d = await card(inst.card_id); } catch (e) {
+      console.warn(e);
+      b.classList.add('mostrissimo-inaccessible');
+      b.innerHTML = '<article class="hand-card is-inaccessible" style="background:#0a0a0a;color:#666;border-color:#222;min-height:7.5rem;display:flex;align-items:center;justify-content:center"><strong>INACCESSIBILE</strong></article>';
+      b.disabled = true;
+      strip.append(b);
+      continue;
+    }
+    b.innerHTML = handCardHTML(d);
     const cost = Number(d.sacrifice_cost ?? 0);
     const own = board().flat().filter(c => isCreatureCell(c) && isMine(c.owner_index)).length;
-    const canPay = Number.isInteger(cost) && cost >= 0 && permanents().length >= cost;
+    const canPay = Number.isInteger(cost) && cost >= 0 && cost <= 6 && permanents().length >= cost;
     const spaceOk = board()[myHomeRow()].some(c => !c) || (cost > 0 && own > 0);
     const onceOk = state.last_mostrissimo_turn?.[myPlayerIndex] !== state.current_turn;
-    const legal = active() && canPay && spaceOk && onceOk && cost <= 6;
+    const legal = active() && canPay && spaceOk && onceOk;
     if (legal) b.classList.add('playable');
     else if (!canPay) b.classList.add('too-expensive');
     b.setAttribute('aria-label',`Apri ${d.name}, ${cost} sacrifici${legal ? ', evocabile' : !canPay ? ', sacrifici insufficienti' : ''}`);

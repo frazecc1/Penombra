@@ -186,6 +186,7 @@ export async function ensureCatalog(): Promise<void> {
     if (extra) console.info(`[penombra] aggiunti ${extra} mostrissimi dal seed (non in Supabase)`);
   }
 
+  ensureInaccessibleCard();
   catalogLoaded = true;
   console.info(`[penombra] catalogo pronto (${catalogSource}): ${cardCache.size} carte`);
 }
@@ -235,6 +236,32 @@ export function listCatalogForDebug() {
 export function getCatalogSource() {
   return catalogSource;
 }
+
+/** Placeholder offerta: non evocabile. Sempre in cache anche se assente dal DB. */
+function ensureInaccessibleCard() {
+  const id = 'lab-mostrissimo-inaccessible';
+  if (cardCache.has(id)) return;
+  cardCache.set(id, {
+    id,
+    name: 'INACCESSIBILE',
+    faction_id: null,
+    faction_code: 'IND',
+    card_type: 'mostrissimo',
+    mana_cost: 0,
+    sacrifice_cost: 99,
+    attack: 0,
+    hp: 0,
+    subtype: null,
+    rarity: 'common',
+    effect_text: 'Slot vuoto: non evocabile.',
+    effect_json: null,
+    effect_on_death_json: null,
+    flavor_text: null,
+    image_url: null,
+    subtype_names: [],
+  });
+}
+
 
 // ---------------------------------------------------------------------------
 // Partite in memoria + persistenza Supabase (recupero spoglie)
