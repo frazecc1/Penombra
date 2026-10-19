@@ -271,6 +271,9 @@ Se una pesca richiede N carte e il mazzo non ne ha abbastanza, per **ogni** cart
 
 ### UX sacrifici Mostrissimo
 
+Scelta sulla **plancia** (non lista a schermo): tap sul permanente. Creatura con aura tua → dialogo «Mostro o aura?». Conferma esplicita. Fase 2 ingresso: cella + Conferma (auto se una sola).
+
+
 Fase 1: overlay lista permanenti (`#mostrissimo-flow-overlay` su `#stage`, colonna centrale) + bottone **Sacrifica** (uno alla volta; on_death/trappole in mezzo). In risoluzione: stato pausa. Fase 2: scelta cella + **Conferma ingresso** (auto-select se una sola cella).
 
 ## 9. Glossario rapido

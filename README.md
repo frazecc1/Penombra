@@ -16,6 +16,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v15** — Sacrifici Mostrissimo sulla **griglia**: tap sul permanente; se ha aura, scegli mostro o aura. Niente lista a schermo.
+
+
 - **v14** — UX sacrifici Mostrissimo: lista a schermo (colonna centrale), barra ✦, pausa in risoluzione, conferma cella di ingresso.
 
 

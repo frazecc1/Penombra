@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v14-mostrissimo-sacrifice-ui',
+  version: 'v15-tribute-on-grid',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -1567,6 +1567,112 @@ async function confirmMostrissimoEntry(pos) {
   return request('mostrissimo/complete', { position: pos }, 'Mostrissimo dichiarato.');
 }
 
+
+/** Scelta sacrificio: mostro vs aura (o conferma semplice). */
+function showSacrificeOptions(options, titleText) {
+  return new Promise(resolve => {
+    let el = $('tribute-pick-dialog');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'tribute-pick-dialog';
+      el.className = 'card-detail-overlay';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.style.zIndex = '165';
+      (typeof stageRoot === 'function' ? stageRoot() : document.body).append(el);
+    }
+    el.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.style.cssText = 'width:min(92vw,380px);margin:auto;padding:1.1rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
+    const title = document.createElement('h2');
+    title.style.cssText = 'margin:0 0 .55rem;font-size:1.15rem';
+    title.textContent = titleText || 'Cosa vuoi sacrificare?';
+    const sub = document.createElement('p');
+    sub.style.cssText = 'margin:0 0 .75rem;opacity:.9;line-height:1.4;font-size:.95rem';
+    sub.textContent = 'Scegli il permanente da mandare al cimitero (non si può annullare dopo la conferma).';
+    const list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:.45rem;margin:.4rem 0 .8rem';
+    const done = (id) => {
+      el.classList.add('hidden');
+      el.innerHTML = '';
+      resolve(id);
+    };
+    for (const opt of options) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'primary-button';
+      b.style.cssText = 'width:100%';
+      b.textContent = opt.label;
+      b.onclick = () => done(opt.instanceId);
+      list.append(b);
+    }
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'secondary-button';
+    cancel.textContent = 'Annulla';
+    cancel.onclick = () => done(null);
+    panel.append(title, sub, list, cancel);
+    el.append(panel);
+    el.classList.remove('hidden');
+  });
+}
+
+/** Click su una cella durante i sacrifici Mostrissimo. */
+async function pickTributeFromCell(cell) {
+  const p = pending();
+  if (!p || p.stage !== 'paying' || p.paid.length >= p.required) return;
+  if (!cell) return notice('Tocca un tuo permanente sul campo.', 'error');
+  if (busy || noticeOpen || reaction() || obligatory()) return;
+
+  const myAuras = (cell.auras || []).filter(a => isMine(a.owner_index));
+  const mine = isMine(cell.owner_index);
+
+  // Solo aure mie su permanente avversario
+  if (!mine) {
+    if (!myAuras.length) return notice('Puoi sacrificare solo i tuoi permanenti.', 'error');
+    if (myAuras.length === 1) {
+      const ad = await card(myAuras[0].card_id);
+      const ok = await confirmTargetChoice(
+        { ...cell, owner_index: myPlayerIndex, attack: undefined, hp: undefined, kind: 'aura' },
+        ad,
+        `Sacrificare l’aura ${ad.name}?`,
+        'Conferma sacrificio',
+      );
+      if (!ok) return;
+      return request('mostrissimo/sacrifice', { instanceId: myAuras[0].instance_id }, 'Sacrificio dichiarato.');
+    }
+    const opts = [];
+    for (const a of myAuras) {
+      const ad = await card(a.card_id);
+      opts.push({ instanceId: a.instance_id, label: `Aura: ${ad.name}` });
+    }
+    const chosen = await showSacrificeOptions(opts, 'Quale aura sacrificare?');
+    if (!chosen) return;
+    return request('mostrissimo/sacrifice', { instanceId: chosen }, 'Sacrificio dichiarato.');
+  }
+
+  // Permanente tuo: creatura con aure → scegli cosa
+  if (isCreatureCell(cell) && myAuras.length > 0) {
+    const md = await card(cell.card_id);
+    const opts = [{ instanceId: cell.instance_id, label: `Mostro: ${md.name}` }];
+    for (const a of myAuras) {
+      const ad = await card(a.card_id);
+      opts.push({ instanceId: a.instance_id, label: `Aura: ${ad.name}` });
+    }
+    const chosen = await showSacrificeOptions(opts, 'Mostro o aura?');
+    if (!chosen) return;
+    return request('mostrissimo/sacrifice', { instanceId: chosen }, 'Sacrificio dichiarato.');
+  }
+
+  // Creatura senza aura / terraforma
+  const d = await card(cell.card_id);
+  const ok = await confirmTargetChoice(cell, d, `Sacrificare ${d.name}?`, 'Conferma sacrificio');
+  if (!ok) return;
+  return request('mostrissimo/sacrifice', { instanceId: cell.instance_id }, 'Sacrificio dichiarato.');
+}
+
+
 function hideMostrissimoFlowOverlay() {
   const el = $('mostrissimo-flow-overlay');
   if (el) el.classList.add('hidden');
@@ -1631,6 +1737,11 @@ async function drawBoard() {
       b.classList.add(c ? (isMine(c.owner_index) ? 'human-card' : 'ai-card') : 'empty');
       if (c?.kind === 'terraforma') b.classList.add('terraforma-cell');
       if (isCreatureCell(c) && c.tired) b.classList.add('tired');
+      // Sacrifici Mostrissimo: evidenzia i tuoi permanenti (e celle con tue aure)
+      if (pending()?.stage === 'paying' && pending().paid.length < pending().required && c) {
+        const myAura = (c.auras || []).some(a => isMine(a.owner_index));
+        if (isMine(c.owner_index) || myAura) b.classList.add('can-sacrifice');
+      }
       // Tue creature non stanche: evidenzia che possono muovere/attaccare (solo fuori da una scelta attiva)
       if (
         active() && !flow && !reaction() && !obligatory() && !pending()
@@ -1697,23 +1808,26 @@ async function drawMostrissimi() {
   const p = pending();
   // Durante i sacrifici: sostituisci l'offerta con un pannello chiaro di progresso
   if (p && p.stage === 'paying') {
-    // Pannello laterale: riassunto; la scelta vera è nell’overlay a colonna centrale
+    const paused = !!(reaction() || obligatory());
+    const need = p.required - p.paid.length;
+
+    // Pannello laterale: solo progresso (la scelta è sulla griglia)
     const h = document.createElement('h2');
     h.textContent = p.paid.length < p.required ? '1. Sacrifici' : '2. Ingresso';
     panel.append(h);
     const info = document.createElement('p');
     info.className = 'tribute-progress';
-    info.style.cssText = 'font-size:1rem;line-height:1.4;margin:.35rem 0 .6rem';
-    const paused = !!(reaction() || obligatory());
+    info.style.cssText = 'font-size:1rem;line-height:1.4;margin:.35rem 0 .55rem';
     if (paused) {
-      info.innerHTML = `<strong>In risoluzione…</strong><br>Sacrifici ${p.paid.length}/${p.required}. Attendi trappole / effetti.`;
+      info.innerHTML = `<strong>In risoluzione…</strong><br>Sacrifici ${p.paid.length}/${p.required}.`;
     } else if (p.paid.length < p.required) {
-      info.innerHTML = `Sacrifici <strong>${p.paid.length}/${p.required}</strong>.<br>Scegli un permanente dalla lista (o tocca la plancia).`;
+      info.innerHTML = `Sacrifici <strong>${p.paid.length}/${p.required}</strong> · ne servono ancora <strong>${need}</strong>.<br>`
+        + `Tocca un <strong>tuo permanente</strong> sulla plancia.`
+        + `<br><span class="muted">Se ha un’aura, potrai scegliere cosa sacrificare.</span>`;
     } else {
-      info.innerHTML = `Sacrifici completi.<br>Scegli la <strong>cella di ingresso</strong> evidenziata, poi conferma.`;
+      info.innerHTML = `Sacrifici completi.<br>Tocca una <strong>cella libera evidenziata</strong>, poi conferma.`;
     }
     panel.append(info);
-    // barra segmenti
     const bar = document.createElement('div');
     bar.className = 'tribute-segments';
     bar.setAttribute('aria-hidden', 'true');
@@ -1724,90 +1838,25 @@ async function drawMostrissimi() {
     }
     panel.append(bar);
 
+    // Fase 1: niente overlay a lista — griglia libera
+    if (p.paid.length < p.required) {
+      hideMostrissimoFlowOverlay();
+      return;
+    }
+
+    // Fase 2: overlay compatto solo per conferma ingresso
     const ov = ensureMostrissimoFlowOverlay();
     ov.innerHTML = '';
     ov.classList.remove('hidden');
+    // Non oscurare tutta la griglia: foglio in basso
+    ov.classList.add('mostrissimo-flow-overlay--entry');
     const sheet = document.createElement('div');
-    sheet.className = 'mostrissimo-flow-sheet';
+    sheet.className = 'mostrissimo-flow-sheet mostrissimo-flow-sheet--compact';
     const title = document.createElement('h2');
     title.id = 'mostrissimo-flow-title';
+    title.textContent = '2 · Dove entra';
     const body = document.createElement('div');
     body.className = 'mostrissimo-flow-body';
-
-    if (paused) {
-      title.textContent = 'In risoluzione…';
-      body.innerHTML = `<p class="mostrissimo-flow-lead">Sacrifici <strong>${p.paid.length}/${p.required}</strong>.</p>`
-        + '<p class="muted">Si sta risolvendo un effetto o una trappola. La lista si riapre dopo.</p>';
-      sheet.append(title, body);
-      ov.append(sheet);
-      return;
-    }
-
-    if (p.paid.length < p.required) {
-      title.textContent = '1 · Sacrifica un permanente';
-      const lead = document.createElement('p');
-      lead.className = 'mostrissimo-flow-lead';
-      lead.innerHTML = `Serve ancora <strong>${p.required - p.paid.length}</strong> · progresso ${p.paid.length}/${p.required}`;
-      const segs = document.createElement('div');
-      segs.className = 'tribute-segments tribute-segments--lg';
-      for (let i = 0; i < p.required; i++) {
-        const seg = document.createElement('span');
-        seg.className = 'tribute-seg' + (i < p.paid.length ? ' is-filled' : '');
-        segs.append(seg);
-      }
-      const list = document.createElement('div');
-      list.className = 'tribute-list tribute-list--full';
-      for (const item of tributeOptions()) {
-        const d = await card(item.card_id);
-        const row = document.createElement('div');
-        row.className = 'tribute-row';
-        const preview = document.createElement('div');
-        preview.className = 'tribute-row-preview';
-        preview.innerHTML = handCardHTML(d);
-        preview.style.cursor = 'pointer';
-        preview.onclick = () => {
-          if (noticeOpen || busy) return;
-          inspect('tribute', item.card_id, { instanceId: item.id, cell: item.cell });
-        };
-        const meta = document.createElement('div');
-        meta.className = 'tribute-row-meta';
-        const auraCount = (item.cell?.auras || []).filter(a => isMine(a.owner_index)).length;
-        meta.innerHTML = `<strong>${escape(d.name)}</strong>`
-          + `<span class="muted">${escape(item.type)}${auraCount ? ` · ${auraCount} aura` : ''}</span>`;
-        const act = document.createElement('button');
-        act.type = 'button';
-        act.className = 'primary-button';
-        act.textContent = 'Sacrifica';
-        act.disabled = busy || noticeOpen;
-        act.onclick = async () => {
-          if (busy || noticeOpen) return;
-          const cell = item.cell;
-          const ownAuras = (cell?.auras || []).filter(a => isMine(a.owner_index));
-          if (isCreatureCell(cell) && ownAuras.length > 0) {
-            const ok = window.confirm(
-              'Attenzione: stai sacrificando un mostro che ha una tua aura addosso. Sei sicuro di voler sacrificare il mostro e non l’aura?',
-            );
-            if (!ok) return;
-          }
-          return request('mostrissimo/sacrifice', { instanceId: item.id }, 'Sacrificio dichiarato.');
-        };
-        row.append(preview, meta, act);
-        list.append(row);
-      }
-      if (!list.childElementCount) {
-        const empty = document.createElement('p');
-        empty.className = 'muted';
-        empty.textContent = 'Nessun permanente da sacrificare.';
-        list.append(empty);
-      }
-      body.append(lead, segs, list);
-      sheet.append(title, body);
-      ov.append(sheet);
-      return;
-    }
-
-    // Fase 2: cella di ingresso
-    title.textContent = '2 · Dove entra il Mostrissimo';
     const cells = summonCells(p);
     if (cells.length === 1 && !mostEntryPick) {
       mostEntryPick = { row: cells[0].row, col: cells[0].col };
@@ -1815,11 +1864,11 @@ async function drawMostrissimi() {
     const lead2 = document.createElement('p');
     lead2.className = 'mostrissimo-flow-lead';
     if (!cells.length) {
-      lead2.textContent = 'Nessuna cella legale: non puoi completare l’evocazione.';
+      lead2.textContent = 'Nessuna cella legale.';
       body.append(lead2);
     } else if (mostEntryPick) {
-      lead2.innerHTML = `Cella selezionata: <strong>[${mostEntryPick.row}, ${mostEntryPick.col}]</strong>`
-        + (cells.length === 1 ? ' <span class="muted">(unica disponibile)</span>' : '');
+      lead2.innerHTML = `Cella <strong>[${mostEntryPick.row}, ${mostEntryPick.col}]</strong>`
+        + (cells.length === 1 ? ' <span class="muted">(unica)</span>' : '');
       const actions = document.createElement('div');
       actions.className = 'mostrissimo-flow-actions';
       const conf = document.createElement('button');
@@ -1828,20 +1877,18 @@ async function drawMostrissimi() {
       conf.textContent = 'Conferma ingresso';
       conf.disabled = busy;
       conf.onclick = () => confirmMostrissimoEntry(mostEntryPick).catch(fail);
-      const change = document.createElement('button');
-      change.type = 'button';
-      change.className = 'secondary-button';
-      change.textContent = cells.length > 1 ? 'Cambia cella' : 'Annulla scelta';
-      change.disabled = busy || cells.length <= 1;
-      change.onclick = () => {
-        mostEntryPick = null;
-        render().catch(fail);
-      };
       actions.append(conf);
-      if (cells.length > 1) actions.append(change);
+      if (cells.length > 1) {
+        const change = document.createElement('button');
+        change.type = 'button';
+        change.className = 'secondary-button';
+        change.textContent = 'Cambia cella';
+        change.onclick = () => { mostEntryPick = null; render().catch(fail); };
+        actions.append(change);
+      }
       body.append(lead2, actions);
     } else {
-      lead2.textContent = 'Tocca una cella libera evidenziata sulla plancia.';
+      lead2.textContent = 'Tocca una cella libera evidenziata.';
       body.append(lead2);
     }
     sheet.append(title, body);
@@ -1851,7 +1898,6 @@ async function drawMostrissimi() {
 
   hideMostrissimoFlowOverlay();
   mostEntryPick = null;
-
 
   // Offerta normale (nessuna evocazione in corso)
   const h = document.createElement('h2'); h.textContent = 'Offerta'; panel.append(h);
@@ -2323,9 +2369,8 @@ async function boardClick(pos) {
   if (p) {
     if (p.stage !== 'paying') return;
     if (p.paid.length < p.required) {
-      if (isMine(c?.owner_index)) return inspect('tribute', c.card_id, { instanceId: c.instance_id, cell: c });
-      // Anche tap su aura propria via cella: gestito da inspect tribute se si apre dalla lista
-      return notice('Scegli un tuo permanente dalla lista sacrifici (o tocca una tua carta in campo).', 'error');
+      if (!c) return notice('Tocca un tuo permanente sul campo da sacrificare.', 'error');
+      return pickTributeFromCell(c);
     }
     // Fase 2: seleziona cella, conferma dall’overlay
     if (c || !summonCells(p).some(x => eq(x, pos))) return notice('Cella non valida.', 'error');

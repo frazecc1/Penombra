@@ -2655,3 +2655,33 @@ body.notice-open #stage .action-panel button {
   }
   #stage .tribute-row-preview { width: 56px; }
 }
+
+
+/* Permanente sacrificabile durante evocazione Mostrissimo */
+#stage .board-cell.can-sacrifice {
+  border: 3px solid #e8c565 !important;
+  box-shadow:
+    0 0 0 2px #e8c565,
+    0 0 18px #e8c56599;
+  z-index: 2;
+  animation: playable-frame-rainbow 1.6s linear infinite;
+}
+#stage.calm .board-cell.can-sacrifice {
+  animation: none !important;
+}
+
+/* Fase 2 ingresso: overlay non copre tutta la griglia */
+#stage .mostrissimo-flow-overlay.mostrissimo-flow-overlay--entry {
+  align-items: flex-end;
+  background: linear-gradient(to top, rgba(8,6,4,0.85) 0%, rgba(8,6,4,0.25) 55%, transparent 100%);
+  pointer-events: none;
+}
+#stage .mostrissimo-flow-overlay.mostrissimo-flow-overlay--entry .mostrissimo-flow-sheet {
+  pointer-events: auto;
+  max-height: 40%;
+  margin-bottom: 0.35rem;
+}
+#stage .mostrissimo-flow-sheet--compact {
+  width: min(100%, 360px);
+  padding: 0.65rem 0.7rem 0.75rem;
+}
