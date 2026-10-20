@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v22-hud-detail',
+  version: 'v24-opponent-rename',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -22,6 +22,9 @@ const cache = new Map();
 let state = null, matchId = null, busy = false, initialized = false, view = null, flow = null;
 /** Cella scelta per l’ingresso del Mostrissimo (fase 2), in attesa di conferma. */
 let mostEntryPick = null;
+/** Indice trappola mostrata nel dettaglio grande (finestra reattiva). */
+let trapPickIdx = 0;
+let trapPickWindowId = null;
 /** Utente ha chiuso il messaggio «dove entra» con Ho capito. */
 let mostEntryHintDismissed = false;
 /** Utente ha chiuso il messaggio iniziale sacrifici con Ho capito. */
@@ -1205,7 +1208,7 @@ async function presentPublic(a, generation) {
 // Passo 3: ogni risultato pubblico ha il suo balloon (state.public_announcements, in ordine); /advance usa
 // sempre l'ID dell'ultimo (state.public_announcement). Dopo refresh/recupero (onlyLast) si ripresenta solo l'ultimo.
 
-/** Una sola volta per partita: popup Mummy arrabbiata quando scatta il taglio vita (4ª Storia). */
+/** Una sola volta per partita: popup avversario arrabbiato (taglio vita Storia). */
 let storyLifeCutShownForMatch = null;
 async function maybeShowStoryLifeCut() {
   if (currentMode !== 'story' || !state || !matchId) return;
@@ -1217,18 +1220,18 @@ async function maybeShowStoryLifeCut() {
   if ((state.current_turn || 0) < sm.ai_life_cut_turn) return;
   storyLifeCutShownForMatch = matchId;
   try {
-    await showAngryMummyDialog('Questo è troppo, ci penso io!');
+    await showOpponentAngryDialog('Questo è troppo, ci penso io!');
   } catch (e) {
     console.warn(e);
   }
 }
 
-function showAngryMummyDialog(text) {
+function showOpponentAngryDialog(text) {
   return new Promise(resolve => {
-    let el = $('angry-mummy-dialog');
+    let el = $('opponent-angry-dialog');
     if (!el) {
       el = document.createElement('div');
-      el.id = 'angry-mummy-dialog';
+      el.id = 'opponent-angry-dialog';
       el.className = 'card-detail-overlay';
       el.setAttribute('role', 'dialog');
       el.setAttribute('aria-modal', 'true');
@@ -1453,31 +1456,76 @@ async function handleMatchFinished() {
 }
 async function renderReaction() {
   const el = reactionDialog(), r = reaction();
-  if (!r || busy || obligatory() || flow?.kind === 'trap-target') { el.classList.add('hidden'); return; }
-  $('reaction-title').textContent = r.event?.kind === 'monster_etb' || r.event?.kind === 'mostrissimo_before_entry' ? 'Finestra NOPE / Trappola' : 'Finestra Trappola';
-  const evt = r.event;
-  let declared = '';
-  if (evt?.card_id) {
-    try { const d = await card(evt.card_id);
-      declared = ` Carta: ${d.name}. Costo ${d.card_type === 'mostrissimo' ? d.sacrifice_cost + ' sacrifici' : d.mana_cost + ' mana'}. ${d.effect_text ?? ''}`;
-    } catch(e) { console.warn(e); }
+  // Mai il popup piccolo: nascondi sempre la reaction-dialog compatta
+  if (el) el.classList.add('hidden');
+
+  if (!r || busy || obligatory() || flow?.kind === 'trap-target') {
+    // Chiudi dettaglio trappola se la finestra non c’è più
+    if (!r && view?.kind === 'trap-pick') close();
+    if (!r) { trapPickWindowId = null; trapPickIdx = 0; }
+    return;
   }
-  const position = evt?.options?.position ?? evt?.position;
-  $('reaction-description').textContent = reactionDescription(evt) + declared
-    + (position ? ` Cella [${position.row},${position.col}].` : '');
-  const choices = $('reaction-choices'); choices.replaceChildren();
-  for (const instId of r.eligible_instance_ids ?? []) {
-    const inst = me()?.hand?.find(x => x.instance_id === instId);
-    if (!inst) continue;
-    const d = await card(inst.card_id);
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'reaction-card-btn';
-    b.dataset.instanceId = inst.instance_id; b.dataset.cardId = d.id; b.innerHTML = cardHTML(d, false);
-    b.setAttribute('aria-label',`Gioca ${d.name} in risposta`);
-    b.onclick = () => beginTrap(inst,d).catch(fail); choices.append(b);
+
+  // Nuova finestra reattiva → riparti dalla prima trappola
+  if (trapPickWindowId !== r.window_id) {
+    trapPickWindowId = r.window_id;
+    trapPickIdx = 0;
   }
-  const actions = $('reaction-actions'); actions.replaceChildren();
-  actions.append(button('Passa',() => chooseTrap({windowId:r.window_id,action:'pass'})));
-  el.classList.remove('hidden');
+
+  await showTrapPickLarge(r);
+}
+
+/** Finestra trappola in stile dettaglio grande (Annulla/Passa + Conferma Trappola). */
+async function showTrapPickLarge(r) {
+  const ids = (r.eligible_instance_ids ?? []).filter(id => me()?.hand?.some(x => x.instance_id === id));
+  const bar = $('detail-actions');
+  const img = $('detail-image');
+  if (!bar || !img) return;
+
+  overlay();
+  bar.replaceChildren();
+  const add = (text, fn, disabled = false) => bar.append(button(text, fn, disabled));
+
+  if (!ids.length) {
+    // Nessuna trappola giocabile: solo passa
+    view = { kind: 'trap-pick' };
+    img.innerHTML = `<div class="trap-pass-only" style="padding:1.5rem;text-align:center">
+      <h2 style="margin:0 0 .5rem;color:#f0d28f">Finestra Trappola</h2>
+      <p style="margin:0 0 1rem;line-height:1.4">${escape(reactionDescription(r.event) || 'L’avversario ha dichiarato un’azione.')}</p>
+      <p class="muted" style="margin:0">Nessuna trappola giocabile in mano.</p>
+    </div>`;
+    add('Passa', () => chooseTrap({ windowId: r.window_id, action: 'pass' }));
+    $('card-detail-overlay')?.classList.remove('hidden');
+    document.body.classList.add('detail-open');
+    return;
+  }
+
+  if (trapPickIdx >= ids.length) trapPickIdx = 0;
+  const instId = ids[trapPickIdx];
+  const inst = me()?.hand?.find(x => x.instance_id === instId);
+  if (!inst) return;
+  const d = await card(inst.card_id);
+  view = { kind: 'trap-pick', instanceId: inst.instance_id, id: d.id };
+  updateCardPreview(d, null);
+  img.innerHTML = cardHTML(d, false);
+
+  if (ids.length > 1) {
+    add('← Altra', () => {
+      trapPickIdx = (trapPickIdx - 1 + ids.length) % ids.length;
+      showTrapPickLarge(r).catch(fail);
+    });
+    add(`Trappola ${trapPickIdx + 1}/${ids.length}`, () => {}, true);
+    add('Altra →', () => {
+      trapPickIdx = (trapPickIdx + 1) % ids.length;
+      showTrapPickLarge(r).catch(fail);
+    });
+  }
+
+  add('Annulla', () => chooseTrap({ windowId: r.window_id, action: 'pass' }));
+  add('Conferma Trappola', () => beginTrap(inst, d));
+
+  $('card-detail-overlay')?.classList.remove('hidden');
+  document.body.classList.add('detail-open');
 }
 async function chooseTrap(choice) {
   const r = reaction();
@@ -1490,7 +1538,15 @@ async function beginTrap(inst,d) {
   if (targetEffect(d)) {
     flow = {kind:'trap-target',windowId:r.window_id,instanceId:inst.instance_id,id:d.id};
     reactionDialog().classList.add('hidden');
-    await render(); notice(r.event?.kind === 'monster_etb' ? 'Scegli la creatura che ha generato l’effetto all’entrata.' : `Scegli il bersaglio di ${d.name}${playerTargetEffect(d) ? ' (tocca i PV dell’IA per colpire il giocatore)' : ''}.`, 'success'); return;
+    close(); // chiudi dettaglio grande mentre si sceglie il bersaglio
+    await render();
+    notice(
+      r.event?.kind === 'monster_etb'
+        ? 'Scegli la creatura che ha generato l’effetto all’entrata.'
+        : `Scegli il bersaglio di ${d.name}${playerTargetEffect(d) ? ' (tocca i PV dell’IA per colpire il giocatore)' : ''}.`,
+      'success',
+    );
+    return;
   }
   await chooseTrap({windowId:r.window_id,action:'play',cardInstanceId:inst.instance_id});
 }
@@ -1576,7 +1632,7 @@ function updateCardPreview(d, cell = null) {
   slot.setAttribute('aria-hidden', 'false');
 }
 async function inspect(kind,id,extra={}) {
-  if (busy || noticeOpen || obligatory() || (reaction() && kind !== 'grave')) return;
+  if (busy || noticeOpen || obligatory() || (reaction() && kind !== 'grave' && kind !== 'trap-pick')) return;
   view = {kind,id,...extra};
   const current = view, d = await card(id);
   if (current !== view) return;
@@ -2185,7 +2241,7 @@ function updateStoryMedallionBanner() {
   }
 }
 
-/** Nome avversario: boss in Storia, altrimenti Mummy. Usato in HUD e popup di turno. */
+/** Nome avversario: in Partita base → nomeavversario; in Storia → nome boss. */
 function opponentDisplayName() {
   if (currentMode === 'pvp') {
     const opp = them();
@@ -2195,10 +2251,10 @@ function opponentDisplayName() {
     const code = getStoryProgress()?.currentBoss;
     if (code && BOSS_DATA[code]?.name) return BOSS_DATA[code].name;
   }
-  return 'Mummy';
+  return 'nomeavversario';
 }
 
-/** Nome dell'avversario sopra le carte (boss in Storia, altrimenti Mummy). */
+/** Aggiorna HUD nome avversario (nomeavversario in Partita base). */
 function updateOpponentName() {
   const el = $('opponent-name');
   if (!el) return;
@@ -2632,11 +2688,11 @@ async function showAnimaScene() {
   const med = document.createElement('div');
   med.className = 'narrator-medallion bob';
   med.style.cssText = 'width:150px;height:150px;margin:0 auto .7rem;border-radius:50%;overflow:hidden;border:2px solid #d5a758;';
-  med.innerHTML = `<img class="narrator-img" src="img/mummy/mummy-base.png" alt="Mummy" width="150" height="150" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`;
+  med.innerHTML = `<img class="narrator-img" src="img/mummy/mummy-base.png" alt="nomeavversario" width="150" height="150" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`;
 
   const nameEl = document.createElement('div');
   nameEl.style.cssText = 'font-family:"Lilita One",Georgia,serif;color:#e8c565;font-size:1.15rem;margin-bottom:.35rem;letter-spacing:.03em;';
-  nameEl.textContent = 'Mummy';
+  nameEl.textContent = 'nomeavversario';
 
   const speech = document.createElement('p');
   speech.id = 'anima-speech';
@@ -3428,7 +3484,7 @@ function showEndlessStart() {
     if (hasRun) msg = `Run in corso: ${wins} vittori${wins === 1 ? 'a' : 'e'}. ` + msg;
     $('endless-start-text').textContent = msg;
   } else {
-    $('endless-start-text').textContent = 'Nessuna run da recuperare. Scegli i colori e affronta Mummy senza limiti.';
+    $('endless-start-text').textContent = 'Nessuna run da recuperare. Scegli i colori e affronta nomeavversario senza limiti.';
   }
   el.classList.remove('hidden');
 }
@@ -3531,7 +3587,7 @@ async function handleEndlessVictory() {
   if (isNewRecord) {
     await showEndlessRecordPopup(progress.best);
   } else {
-    await showMummyDialog(`Vittoria! Run: ${progress.wins}.\nProssima fight: Mummy a ${endlessAiLife(progress.wins)} PV.`);
+    await showOpponentDialog(`Vittoria! Run: ${progress.wins}.\nProssima fight: nomeavversario a ${endlessAiLife(progress.wins)} PV.`);
   }
 
   await startNextEndlessFight(progress);
@@ -3607,7 +3663,7 @@ function showWhoStarts() {
     const foe = document.createElement('button');
     foe.type = 'button';
     foe.className = 'secondary-button';
-    foe.textContent = 'Inizia Mummy';
+    foe.textContent = 'Inizia nomeavversario';
     foe.onclick = () => { el.classList.add('hidden'); resolve(0); };
     actions.append(you, foe);
     panel.append(title, actions);
@@ -3669,12 +3725,12 @@ function showCheatCodeChoice(progress) {
 }
 
 /** Dialogo semplice della Mummia (testo + bottone Continua). */
-function showMummyDialog(text) {
+function showOpponentDialog(text) {
   return new Promise(resolve => {
-    let el = $('mummy-story-dialog');
+    let el = $('opponent-dialog');
     if (!el) {
       el = document.createElement('div');
-      el.id = 'mummy-story-dialog';
+      el.id = 'opponent-dialog';
       el.className = 'card-detail-overlay';
       el.setAttribute('role', 'dialog');
       el.setAttribute('aria-modal', 'true');
@@ -3722,7 +3778,7 @@ async function handleStoryVictory() {
 
     // Schermata ad hoc: griglia via, solo complimenti della Mummia
     clearMatchUI();
-    await showMummyDialog(BOSS_DATA.IND.mummyAfter + '\n\nHai ottenuto il trofeo «Abitante della Piramide»!\nLa Modalità Endless è ora sbloccata.');
+    await showOpponentDialog(BOSS_DATA.IND.mummyAfter + '\n\nHai ottenuto il trofeo «Abitante della Piramide»!\nLa Modalità Endless è ora sbloccata.');
     showHome();
     return;
   }
@@ -3739,12 +3795,12 @@ async function handleStoryVictory() {
   clearMatchUI();
 
   const boss = BOSS_DATA[justBeaten] || { mummyAfter: 'Hai vinto.' };
-  await showMummyDialog(boss.mummyAfter);
+  await showOpponentDialog(boss.mummyAfter);
 
   const remaining = getRemainingBosses(progress);
   if (remaining.length === 0) {
     // Prossimo è Indrazzico
-    await showMummyDialog('Hai sconfitto tutti i guardiani dei colori.\nOra ti attende Indrazzico, l’Ombra Eterna.');
+    await showOpponentDialog('Hai sconfitto tutti i guardiani dei colori.\nOra ti attende Indrazzico, l’Ombra Eterna.');
   }
 
   // Chiedi se continuare subito o tornare alla Home
@@ -4015,7 +4071,7 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
         aiStartingLife: aiLife,
         tertiaryColor: options.tertiaryColor || ep.tertiary || undefined,
         aiPrimary,
-        aiDisplayName: 'Mummy',
+        aiDisplayName: 'nomeavversario',
         firstPlayer,
       };
       if (options.tertiaryColor) createBody.tertiaryColor = options.tertiaryColor;
@@ -4039,7 +4095,7 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
         // 3ª partita: scegli il Medaglione PRIMA di creare, così vale subito (una sola volta)
         if (fightIndex === 2 && !progress.chosenPower) {
           const bossPreview = BOSS_DATA[pendingStoryBoss] || { name: pendingStoryBoss };
-          await showMummyDialog(
+          await showOpponentDialog(
             `Oh no! ${bossPreview.name} sta barando!\nSta usando il suo Medaglione!\n\nTieni, prendi… usa uno di questi cheat code, presto!`
           );
           const chosen = await showCheatCodeChoice(progress);
@@ -4048,7 +4104,7 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
             progress.chosenPower = chosen;
             saveStoryProgress(progress);
             const med = BOSS_DATA[chosen];
-            await showMummyDialog(
+            await showOpponentDialog(
               `Hai attivato il ${med.medaglioneName}!\n«${med.powerDesc}»`
             );
           }
@@ -4154,23 +4210,23 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
       const boss = BOSS_DATA[nextBoss] || { name: nextBoss, threat: '…' };
 
       if (nextBoss === 'IND') {
-        await showMummyDialog(`È arrivato il momento. Affronterai ${boss.name}.\n${boss.threat}`);
-        await showMummyDialog(
+        await showOpponentDialog(`È arrivato il momento. Affronterai ${boss.name}.\n${boss.threat}`);
+        await showOpponentDialog(
           'Indrazzico appare con una forza spaventosa…\n\nHa 200 punti vita. Tieni duro i primi turni:\nquando esagerano, ci penso io.'
         );
         if (progress.chosenPower && BOSS_DATA[progress.chosenPower]) {
           const med = BOSS_DATA[progress.chosenPower];
-          await showMummyDialog(`Il tuo ${med.medaglioneName} è ancora attivo:\n«${med.powerDesc}»`);
+          await showOpponentDialog(`Il tuo ${med.medaglioneName} è ancora attivo:\n«${med.powerDesc}»`);
         }
       } else {
-        await showMummyDialog(`Il prossimo avversario è ${boss.name}.\n${boss.threat}`);
+        await showOpponentDialog(`Il prossimo avversario è ${boss.name}.\n${boss.threat}`);
 
         if (fightIndex < 2) {
-          await showMummyDialog('Preparati, sarà una sfida impegnativa.');
+          await showOpponentDialog('Preparati, sarà una sfida impegnativa.');
         } else if (progress.chosenPower && BOSS_DATA[progress.chosenPower]) {
           // Fight 3+: ricorda solo il Medaglione già attivo (scelta fatta prima della create)
           const med = BOSS_DATA[progress.chosenPower];
-          await showMummyDialog(`Il tuo ${med.medaglioneName} è attivo:\n«${med.powerDesc}»`);
+          await showOpponentDialog(`Il tuo ${med.medaglioneName} è attivo:\n«${med.powerDesc}»`);
         }
       }
 

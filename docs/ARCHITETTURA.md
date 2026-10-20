@@ -12,7 +12,7 @@ Penombra è un **gioco di carte a turni** con:
 - regole e IA sul server,
 - carte e login su Supabase.
 
-Il lab attuale punta sulla **Partita base** (umano vs IA “Mummy”), con griglia 3×3, mana crescente, mostri, trappole, aure, terraforme e maledizioni.
+Il lab attuale punta sulla **Partita base** (umano vs IA “nomeavversario”), con griglia 3×3, mana crescente, mostri, trappole, aure, terraforme e maledizioni.
 
 ```
 ┌─────────────┐     HTTPS      ┌──────────────────┐     SQL/Auth     ┌──────────┐
@@ -313,3 +313,9 @@ Layout desktop: `.stage-frame` grid `1fr auto 1fr`; board-cell `contain:layout s
 
 
 HUD: `.hud-name-row` colonna fissa (nome + chip); `.ai-hud`/`.player-hud` stessa altezza per evitare reflow.
+
+
+Finestra reattiva: `showTrapPickLarge` usa `#card-detail-overlay` (stesso UI di ispezione carta); più trappole → frecce Altra.
+
+
+Partita base: nome UI avversario = **nomeavversario**. Dialog narrativi: `showOpponentDialog` (ex showMummyDialog).
