@@ -319,3 +319,13 @@ Finestra reattiva: `showTrapPickLarge` usa `#card-detail-overlay` (stesso UI di 
 
 
 Partita base: nome UI avversario = **nomeavversario**. Dialog narrativi: `showOpponentDialog` (ex showMummyDialog).
+
+
+## Latenza «Sono io» / piramide Partita base
+
+Il ritardo (fino a ~10s) era soprattutto **rete + cold start Render** e chiamate sequenziali (`/me/profile` → `/match/:id`) al click sulla piramide.
+
+Mitigazioni client (v26):
+- cache token Bearer 60s;
+- `claimDeviceAndSync` + **`probePrior` in background** appena dopo «Sono io»;
+- click piramide: se già sondato → dialog **subito**; altrimenti dialog «Cerco le tue spoglie…» senza aspettare la fine delle API.

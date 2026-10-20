@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v24-opponent-rename',
+  version: 'v26-fast-spoglie',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -704,8 +704,20 @@ function getDeviceLabel() {
   }
 }
 
-async function api(path,options={}) {
+/** Cache token: evita getSession() su ogni fetch (lento su cold start). */
+let _tokenCache = { token: null, at: 0 };
+const TOKEN_TTL_MS = 60_000;
+async function getAccessTokenCached(force = false) {
+  if (!force && _tokenCache.token && Date.now() - _tokenCache.at < TOKEN_TTL_MS) {
+    return _tokenCache.token;
+  }
   const token = await getAccessToken();
+  _tokenCache = { token, at: Date.now() };
+  return token;
+}
+
+async function api(path,options={}) {
+  const token = await getAccessTokenCached(!!options.forceToken);
   if (!token) throw new Error('Sessione scaduta, accedi di nuovo.');
   const abort = new AbortController(), timer = setTimeout(() => abort.abort(),45000);
   try {
@@ -722,6 +734,7 @@ async function api(path,options={}) {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       if (json.code === 'session_replaced' || (res.status === 401 && /altro dispositivo|session_replaced|sostituita/i.test(String(json.error || '')))) {
+        _tokenCache = { token: null, at: 0 };
         try { await signOut(); } catch (_) { /* ignore */ }
         try { showAuthScreen({ forceLoginForm: false }); } catch (_) { /* ignore */ }
         throw new Error('Hai effettuato l’accesso da un altro dispositivo. Qui devi accedere di nuovo.');
@@ -736,9 +749,12 @@ async function api(path,options={}) {
 }
 
 /** Sincronizza profilo server → localStorage (progressi + ultima partita). */
+/** Ultimo profilo server (per probePrior senza seconda GET). */
+let _profileCache = null;
 async function pullProfileFromServer() {
   try {
     const profile = await api('/me/profile');
+    _profileCache = profile;
     if (profile.story_progress && typeof profile.story_progress === 'object') {
       try { localStorage.setItem(STORY_KEY, JSON.stringify(profile.story_progress)); } catch (_) { /* ignore */ }
     }
@@ -3133,17 +3149,26 @@ function hideHome() {
 
 // ---------- Schermata iniziale: recupera partita precedente / nuova partita ----------
 let priorMatch = null, probing = false;
+/** true se probePrior è già stato eseguito dopo l’ultimo login (warm). */
+let priorProbed = false;
 async function probePrior() {
   priorMatch = null;
-  // Preferisci last_match_id dal server, fallback localStorage
+  // Preferisci cache profilo (claimDevice) → localStorage → GET /me/profile
   let prior = null;
-  try {
-    const profile = await api('/me/profile');
-    if (profile?.last_match_id) prior = String(profile.last_match_id);
-  } catch (_) { /* ignore */ }
+  if (_profileCache?.last_match_id) {
+    prior = String(_profileCache.last_match_id);
+  }
   if (!prior) {
     try { prior = localStorage.getItem('bellum:last-match'); } catch (_) { prior = null; }
   }
+  if (!prior) {
+    try {
+      const profile = await api('/me/profile');
+      _profileCache = profile;
+      if (profile?.last_match_id) prior = String(profile.last_match_id);
+    } catch (_) { /* ignore */ }
+  }
+  priorProbed = true;
   if (!prior) return;
   try {
     const [user, result] = await Promise.all([getCurrentUser(), api(`/match/${encodeURIComponent(prior)}`)]);
@@ -3157,11 +3182,10 @@ async function probePrior() {
     if (result.state?.status === 'finished') {
       void api('/me/profile', { method: 'PUT', body: { last_match_id: null } }).catch(() => {});
       try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
+      priorMatch = null;
       return;
     }
   } catch (e) {
-    // Lab: partita forse ancora in localStorage ma server ha riavviato (RAM vuota).
-    // Mostriamo comunque RIPRENDI: al click spieghiamo se non c’è più.
     console.warn('Ripristino non verificato sul server', e);
     priorMatch = { id: prior, unverified: true };
   }
@@ -3214,30 +3238,36 @@ function startDialog() {
   document.body.append(el);
   return el;
 }
-function showStart() {
+function showStart(opts = {}) {
   if (state || busy) {
     console.info('[penombra] showStart skip', { hasState: !!state, busy });
     return;
   }
   if ($('anima-scene') && !$('anima-scene').classList.contains('hidden')) return;
   const el = startDialog();
+  const loading = !!opts.loading || probing;
   const has = !!priorMatch;
   const recover = $('start-recover-button');
   const fresh = $('start-new-button');
   const text = $('start-text');
-  if (recover) recover.classList.toggle('hidden', !has);
-  if (fresh) fresh.className = has ? 'secondary-button' : 'primary-button';
-  if (text) {
-    text.textContent = has
-      ? 'Un’ombra precedente ti attende. Vuoi riprendere le tue spoglie o abbracciare un nuovo inizio?'
-      : 'Nessuna spoglia da recuperare. Puoi solo abbracciare un nuovo inizio.';
+  if (loading) {
+    if (recover) recover.classList.add('hidden');
+    if (fresh) { fresh.className = 'secondary-button'; fresh.disabled = true; }
+    if (text) text.textContent = 'Cerco le tue spoglie…';
+  } else {
+    if (fresh) fresh.disabled = false;
+    if (recover) recover.classList.toggle('hidden', !has);
+    if (fresh) fresh.className = has ? 'secondary-button' : 'primary-button';
+    if (text) {
+      text.textContent = has
+        ? 'Un’ombra precedente ti attende. Vuoi riprendere le tue spoglie o abbracciare un nuovo inizio?'
+        : 'Nessuna spoglia da recuperare. Puoi solo abbracciare un nuovo inizio.';
+    }
   }
-  // Home copre #stage: nascondila e mostra il dialog sul body (z-index 500)
   try { hideHome(); } catch (_) { /* ignore */ }
   el.classList.remove('hidden');
-  // ridondante ma evita display:none residui
   el.style.display = 'grid';
-  console.info('[penombra] showStart', { hasPrior: has, priorId: priorMatch?.id ?? null, parent: el.parentElement?.id || el.parentElement?.tagName });
+  console.info('[penombra] showStart', { loading, hasPrior: has, priorId: priorMatch?.id ?? null });
 }
 function hideStart() {
   const el = $('start-dialog');
@@ -3246,9 +3276,23 @@ function hideStart() {
   el.style.display = 'none';
 }
 async function startScreen() {
-  if (state || busy || probing) return;
+  if (state || busy) return;
+  // Se già sondato dopo login → dialog immediato (niente attesa 5–10s)
+  if (priorProbed && !probing) {
+    showStart();
+    return;
+  }
+  if (probing) {
+    showStart({ loading: true });
+    return;
+  }
   probing = true;
-  try { await probePrior(); } finally { probing = false; }
+  showStart({ loading: true }); // subito, non dopo le API
+  try {
+    await probePrior();
+  } finally {
+    probing = false;
+  }
   showStart();
 }
 
@@ -4700,9 +4744,13 @@ function showPvpResultPopup(title) {
 
 window.addEventListener('bellum:auth-ready', () => {
   // Solo Home (piramidi). Il dialog «spoglie» esce SOLO al click sulla piramide «Partita base».
+  priorProbed = false;
+  _profileCache = null;
   try { showHome(); } catch (_) { /* ignore */ }
   init()
     .then(() => claimDeviceAndSync().catch(() => {}))
+    // Precarica last_match mentre l’utente è sulla home → click piramide istantaneo
+    .then(() => probePrior().catch(() => {}))
     .catch(fail);
 });
 

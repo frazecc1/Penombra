@@ -17,6 +17,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v26** — Spoglie/piramide più reattive: dialog subito («Cerco…»), probe in background dopo «Sono io», cache token/profilo.
+
+
 - **v24** — Partita base: placeholder **nomeavversario**; `showOpponentDialog` / `showOpponentAngryDialog` (ex Mummy).
 
 
