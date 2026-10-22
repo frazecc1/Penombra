@@ -375,3 +375,27 @@ Flusso Partita base:
 Asset attesi:
 - `img/UI/HOME/piramide-{storia,endless,pvp,base}.webp` — **nota:** `piramide-base.webp` ancora da caricare su GitHub
 - `musics/base.mp3` ✓
+
+
+---
+
+## Note versioneB_1 (pulizia lab)
+
+### Storage client
+Prefisso ufficiale: `penombra:` (es. `penombra:last-match`, `penombra:device-id`, `penombra:auto-ho-capito`).
+Le chiavi `bellum:*` vengono lette una volta e migrate.
+
+### Eventi
+`penombra:auth-ready` — emesso da `auth.js` dopo Accedi / Sono io (boot incluso).
+
+### Medaglioni HUD
+In Partita base i chip `#player-medallion` / `#opponent-medallion` mostrano il placeholder
+«medaglione lasciato a casa per sbaglio» (tap → notice). Non sono poteri Storia.
+
+### Trappole
+Solo UI dettaglio grande (`showTrapPickLarge` in `game.js`). File `trap_preview.js` rimosso.
+
+### Roadmap residuale
+Ancora presenti in `game.js` (da rimuovere in versioneB_2+): rami Storia/Endless, BOSS_DATA, progressi.
+Backend: `lobby.ts` e route `/lobby/*` ancora nel repo (da rimuovere in fase backend).
+

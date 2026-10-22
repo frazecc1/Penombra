@@ -1,3 +1,12 @@
+## Note versioneB_1 (pulizia fase 1)
+
+* Rimosso `docs/js/trap_preview.js` (trappole solo via dettaglio grande in `game.js`).
+* Chiavi storage `bellum:*` → `penombra:*` con migrazione automatica dalla chiave legacy.
+* Evento auth `penombra:auth-ready` (ex `bellum:auth-ready`).
+* Medaglioni HUD: placeholder visibile **«medaglione lasciato a casa per sbaglio»** (lab base, niente poteri Storia).
+* Home invariata (3 piramidi alieni + Partita base).
+* Prossimi step (roadmap): rimozione codice Storia/Endless client; rimozione lobby PvP backend.
+
 ## Note v8 (dialog visibile)
 
 * `#start-dialog` montato su `document.body` con `z-index:500` (prima era dentro `#stage`, coperta dalla Home).

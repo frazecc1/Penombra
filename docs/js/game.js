@@ -17,7 +17,7 @@ function funnyBootLine(i) { return FUNNY_BOOT[i % FUNNY_BOOT.length]; }
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v34-fix-cardHTML-split',
+  version: 'versioneB_1-cleanup-fase1',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -29,6 +29,33 @@ window.__penombraDebug = {
   },
 };
 const cache = new Map();
+
+/** localStorage con prefisso penombra:; legge anche la vecchia chiave bellum: (migrazione una tantum). */
+function lsGet(key) {
+  try {
+    const v = localStorage.getItem(key);
+    if (v != null) return v;
+    if (key.startsWith('penombra:')) {
+      const legacy = 'bellum:' + key.slice('penombra:'.length);
+      const old = localStorage.getItem(legacy);
+      if (old != null) {
+        try { localStorage.setItem(key, old); localStorage.removeItem(legacy); } catch (_) {}
+        return old;
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (_) {}
+}
+function lsRemove(key) {
+  try {
+    localStorage.removeItem(key);
+    if (key.startsWith('penombra:')) localStorage.removeItem('bellum:' + key.slice('penombra:'.length));
+  } catch (_) {}
+}
+
 let state = null, matchId = null, busy = false, initialized = false, view = null, flow = null;
 /** Cella scelta per l’ingresso del Mostrissimo (fase 2), in attesa di conferma. */
 let mostEntryPick = null;
@@ -330,14 +357,14 @@ function applyReduceMotion(on) {
   if (stage) stage.classList.toggle('calm', !!on);
   const toggle = $('reduce-motion-toggle');
   if (toggle) toggle.setAttribute('aria-checked', on ? 'true' : 'false');
-  try { localStorage.setItem('bellum:reduce-motion', on ? '1' : '0'); } catch (_) { /* ignore */ }
+  try { lsSet('penombra:reduce-motion', on ? '1' : '0'); } catch (_) { /* ignore */ }
 }
 function wireReduceMotion() {
   const toggle = $('reduce-motion-toggle');
   if (!toggle || toggle.dataset.ready) return;
   toggle.dataset.ready = 'true';
   let stored = null;
-  try { stored = localStorage.getItem('bellum:reduce-motion'); } catch (_) { /* ignore */ }
+  try { stored = lsGet('penombra:reduce-motion'); } catch (_) { /* ignore */ }
   const prefers = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const on = stored === '1' || (stored === null && prefers);
   applyReduceMotion(on);
@@ -350,12 +377,12 @@ function wireReduceMotion() {
 
 /** Preferenza: conferma automatica dei popup «Ho capito». */
 function isAutoNotice() {
-  try { return localStorage.getItem('bellum:auto-ho-capito') === '1'; } catch (_) { return false; }
+  try { return lsGet('penombra:auto-ho-capito') === '1'; } catch (_) { return false; }
 }
 function applyAutoNotice(on) {
   const toggle = $('auto-notice-toggle');
   if (toggle) toggle.setAttribute('aria-checked', on ? 'true' : 'false');
-  try { localStorage.setItem('bellum:auto-ho-capito', on ? '1' : '0'); } catch (_) { /* ignore */ }
+  try { lsSet('penombra:auto-ho-capito', on ? '1' : '0'); } catch (_) { /* ignore */ }
 }
 
 /** Overlay dialog unificato (stile card-detail) nella colonna centrale. */
@@ -486,7 +513,7 @@ function wireAutoNotice() {
   if (!toggle || toggle.dataset.ready) return;
   toggle.dataset.ready = 'true';
   let stored = null;
-  try { stored = localStorage.getItem('bellum:auto-ho-capito'); } catch (_) { /* ignore */ }
+  try { stored = lsGet('penombra:auto-ho-capito'); } catch (_) { /* ignore */ }
   applyAutoNotice(stored === '1');
   toggle.addEventListener('click', e => {
     e.stopPropagation();
@@ -759,12 +786,12 @@ function close() {
 }
 /** ID stabile di questo browser (per sessione unica cross-device). */
 function getDeviceId() {
-  const KEY = 'bellum:device-id';
+  const KEY = 'penombra:device-id';
   try {
-    let id = localStorage.getItem(KEY);
+    let id = lsGet(KEY);
     if (!id) {
       id = (crypto.randomUUID && crypto.randomUUID()) || `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      localStorage.setItem(KEY, id);
+      lsSet(KEY, id);
     }
     return id;
   } catch (_) {
@@ -841,15 +868,15 @@ async function pullProfileFromServer() {
     const profile = await api('/me/profile');
     _profileCache = profile;
     if (profile.story_progress && typeof profile.story_progress === 'object') {
-      try { localStorage.setItem(STORY_KEY, JSON.stringify(profile.story_progress)); } catch (_) { /* ignore */ }
+      try { lsSet(STORY_KEY, JSON.stringify(profile.story_progress)); } catch (_) { /* ignore */ }
     }
     if (profile.last_match_id) {
-      try { localStorage.setItem('bellum:last-match', String(profile.last_match_id)); } catch (_) { /* ignore */ }
+      try { lsSet('penombra:last-match', String(profile.last_match_id)); } catch (_) { /* ignore */ }
     } else {
-      try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
+      try { lsRemove('penombra:last-match'); } catch (_) { /* ignore */ }
     }
     try {
-      localStorage.setItem('bellum:base-match-in-progress', profile.base_match_in_progress ? '1' : '0');
+      lsSet('penombra:base-match-in-progress', profile.base_match_in_progress ? '1' : '0');
     } catch (_) { /* ignore */ }
     return profile;
   } catch (e) {
@@ -872,9 +899,9 @@ async function setBaseMatchInProgress(on, matchId = null) {
       if (!on) _profileCache.last_match_id = null;
     }
     try {
-      localStorage.setItem('bellum:base-match-in-progress', on ? '1' : '0');
-      if (on && matchId) localStorage.setItem('bellum:last-match', String(matchId));
-      if (!on) localStorage.removeItem('bellum:last-match');
+      lsSet('penombra:base-match-in-progress', on ? '1' : '0');
+      if (on && matchId) lsSet('penombra:last-match', String(matchId));
+      if (!on) lsRemove('penombra:last-match');
     } catch (_) { /* ignore */ }
   } catch (e) {
     console.warn('setBaseMatchInProgress', e);
@@ -884,11 +911,11 @@ function isBaseMatchInProgress() {
   if (_profileCache && typeof _profileCache.base_match_in_progress === 'boolean') {
     return _profileCache.base_match_in_progress;
   }
-  try { return localStorage.getItem('bellum:base-match-in-progress') === '1'; } catch (_) { return false; }
+  try { return lsGet('penombra:base-match-in-progress') === '1'; } catch (_) { return false; }
 }
 function baseMatchIdHint() {
   if (_profileCache?.last_match_id) return String(_profileCache.last_match_id);
-  try { return localStorage.getItem('bellum:last-match'); } catch (_) { return null; }
+  try { return lsGet('penombra:last-match'); } catch (_) { return null; }
 }
 
 /** Claim device + pull profilo (dopo login / Sono io). */
@@ -1466,7 +1493,7 @@ function queuePresentation(onlyLast = false) {
 
 /** Pulisce completamente la UI della partita (griglia, mani, overlay) senza toccare i progressi Storia. */
 function clearMatchUI() {
-  try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
+  try { lsRemove('penombra:last-match'); } catch (_) { /* ignore */ }
   void api('/me/profile', { method: 'PUT', body: { last_match_id: null } }).catch(() => { /* ignore */ });
   matchId = null;
   state = null;
@@ -1486,8 +1513,7 @@ function clearMatchUI() {
   if (medBanner) medBanner.classList.add('hidden');
   const storyProg = $('story-progress-badge');
   if (storyProg) storyProg.classList.add('hidden');
-  $('player-medallion')?.classList.add('hidden');
-  $('opponent-medallion')?.classList.add('hidden');
+  applyMedallionPlaceholders();
   // Svuota la griglia e la mano IA così non resta la partita vecchia a video
   const board = $('shared-board');
   if (board) board.innerHTML = '';
@@ -1574,7 +1600,7 @@ async function handleMatchFinished() {
   try { dismissNotice(); } catch (_) { /* ignore */ }
 
   clearMatchUI();
-  try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
+  try { lsRemove('penombra:last-match'); } catch (_) { /* ignore */ }
   matchId = null;
   state = null;
   priorMatch = null;
@@ -2328,18 +2354,41 @@ async function render() {
   }
 }
 
-/** Aggiorna i chip Medaglione sotto i nomi (tuo + boss) e nasconde il vecchio banner flottante. */
+/** Lab Partita base: medaglioni HUD come placeholder (nessun potere Storia). */
+function applyMedallionPlaceholders() {
+  const msg = 'medaglione lasciato a casa per sbaglio';
+  for (const id of ['player-medallion', 'opponent-medallion']) {
+    const el = $(id);
+    if (!el) continue;
+    el.classList.remove('hidden');
+    el.textContent = '◇';
+    el.title = msg;
+    el.setAttribute('aria-label', msg);
+    el.onclick = (e) => {
+      e.stopPropagation();
+      notice(msg, 'success');
+    };
+  }
+  const badge = $('story-progress-badge');
+  if (badge) badge.classList.add('hidden');
+}
+
+/** Aggiorna i chip Medaglione sotto i nomi. In lab base → placeholder. */
 function updateStoryMedallionBanner() {
-  // Nascondi il vecchio banner fisso in alto (non serve più)
   const old = $('story-medallion-banner');
   if (old) old.classList.add('hidden');
 
-  const progress = currentMode === 'story' ? getStoryProgress() : null;
+  // Lab: solo Partita base attiva → sempre placeholder
+  if (currentMode !== 'story') {
+    applyMedallionPlaceholders();
+    return;
+  }
+
+  const progress = getStoryProgress();
   const hasMatch = !!(state && matchId);
   const playerChip = $('player-medallion');
   const bossChip = $('opponent-medallion');
 
-  // --- Medaglione del giocatore (dopo la 3ª scelta) ---
   if (playerChip) {
     const power = progress?.chosenPower;
     if (hasMatch && power && BOSS_DATA[power]?.medaglioneName) {
@@ -2354,16 +2403,13 @@ function updateStoryMedallionBanner() {
       };
       playerChip.classList.remove('hidden');
     } else {
-      playerChip.classList.add('hidden');
-      playerChip.onclick = null;
+      applyMedallionPlaceholders();
     }
   }
 
-  // --- Medaglione del boss (dalla 3ª partita in poi, non Indrazzico) ---
-  if (bossChip) {
+  if (bossChip && currentMode === 'story') {
     const bossCode = progress?.currentBoss;
     const fightIndex = getStoryFightIndex(progress);
-    // Boss «bara» dalla 3ª sfida (fightIndex >= 2) e ha un Medaglione
     const bossActive = hasMatch && bossCode && bossCode !== 'IND' && fightIndex >= 2 && BOSS_DATA[bossCode]?.medaglioneName;
     if (bossActive) {
       const med = BOSS_DATA[bossCode];
@@ -2376,9 +2422,6 @@ function updateStoryMedallionBanner() {
         notice(`Boss — ${med.medaglioneName}\n${med.powerDesc}`, 'success');
       };
       bossChip.classList.remove('hidden');
-    } else {
-      bossChip.classList.add('hidden');
-      bossChip.onclick = null;
     }
   }
 }
@@ -2975,11 +3018,11 @@ let currentMode = 'base'; // 'base' | (story/endless/pvp disattivati in lab)
 //   completed: false                 // true solo dopo aver battuto Indrazzico
 // }
 
-const STORY_KEY = 'bellum:story-progress';
+const STORY_KEY = 'penombra:story-progress';
 
 function getStoryProgress() {
   try {
-    const raw = localStorage.getItem(STORY_KEY);
+    const raw = lsGet(STORY_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -2989,7 +3032,7 @@ function getStoryProgress() {
 
 function saveStoryProgress(progress) {
   try {
-    localStorage.setItem(STORY_KEY, JSON.stringify(progress));
+    lsSet(STORY_KEY, JSON.stringify(progress));
   } catch (e) {
     console.warn('Impossibile salvare i progressi Storia', e);
   }
@@ -3001,8 +3044,8 @@ function saveStoryProgress(progress) {
 
 function clearStoryProgress() {
   try {
-    localStorage.removeItem(STORY_KEY);
-    localStorage.removeItem('bellum:story-completed'); // vecchia chiave
+    lsRemove(STORY_KEY);
+    lsRemove('penombra:story-completed'); // vecchia chiave
   } catch { /* ignore */ }
   void api('/me/profile', { method: 'PUT', body: { story_progress: null } }).catch(() => { /* ignore */ });
 }
@@ -3018,11 +3061,11 @@ function isStoryCompleted() {
 //   wins: number,   // fight vinte nella run corrente (0 = stai per giocare la 1ª)
 //   best: number,   // massimo storico di fight vinte in una singola run
 // }
-const ENDLESS_KEY = 'bellum:endless-progress';
+const ENDLESS_KEY = 'penombra:endless-progress';
 
 function getEndlessProgress() {
   try {
-    const raw = localStorage.getItem(ENDLESS_KEY);
+    const raw = lsGet(ENDLESS_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -3032,7 +3075,7 @@ function getEndlessProgress() {
 
 function saveEndlessProgress(progress) {
   try {
-    localStorage.setItem(ENDLESS_KEY, JSON.stringify(progress));
+    lsSet(ENDLESS_KEY, JSON.stringify(progress));
   } catch { /* ignore */ }
   // best-effort sync profilo
   void api('/me/profile', { method: 'PUT', body: { endless_progress: progress } }).catch(() => {});
@@ -3288,7 +3331,7 @@ async function probePrior() {
     prior = String(_profileCache.last_match_id);
   }
   if (!prior) {
-    try { prior = localStorage.getItem('bellum:last-match'); } catch (_) { prior = null; }
+    try { prior = lsGet('penombra:last-match'); } catch (_) { prior = null; }
   }
   if (!prior) {
     try {
@@ -3305,12 +3348,12 @@ async function probePrior() {
     const isMine = myId && result.state?.players?.some(pl => pl?.user_id === myId);
     if (result.state?.state_version === 4 && isMine && result.state.status !== 'finished') {
       priorMatch = { id: prior };
-      try { localStorage.setItem('bellum:last-match', prior); } catch (_) { /* ignore */ }
+      try { lsSet('penombra:last-match', prior); } catch (_) { /* ignore */ }
       return;
     }
     if (result.state?.status === 'finished') {
       void api('/me/profile', { method: 'PUT', body: { last_match_id: null } }).catch(() => {});
-      try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
+      try { lsRemove('penombra:last-match'); } catch (_) { /* ignore */ }
       priorMatch = null;
       return;
     }
@@ -3556,7 +3599,7 @@ async function resumeStory() {
       if (result.state.status === 'finished') {
         // Partita già conclusa: passa al prossimo boss
         priorMatch = null;
-        try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
+        try { lsRemove('penombra:last-match'); } catch (_) { /* ignore */ }
         busy = false;
         await startNextStoryFight(progress);
         return;
@@ -3566,7 +3609,7 @@ async function resumeStory() {
       flow = null;
       priorMatch = null;
       deathDraft = { choiceId: null, instanceIds: [] };
-      localStorage.setItem('bellum:last-match', matchId);
+      lsSet('penombra:last-match', matchId);
       hideHome();
       close();
       closeGraveyard();
@@ -3696,7 +3739,7 @@ async function resumeEndless() {
       if (result.state?.state_version !== 4) throw new Error('Partita non più compatibile.');
       if (result.state.status === 'finished') {
         priorMatch = null;
-        try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
+        try { lsRemove('penombra:last-match'); } catch (_) { /* ignore */ }
         busy = false;
         if (progress?.primary) {
           await startNextEndlessFight(progress);
@@ -3710,7 +3753,7 @@ async function resumeEndless() {
       flow = null;
       priorMatch = null;
       deathDraft = { choiceId: null, instanceIds: [] };
-      localStorage.setItem('bellum:last-match', matchId);
+      lsSet('penombra:last-match', matchId);
       hideHome();
       close();
       closeGraveyard();
@@ -3764,7 +3807,7 @@ async function handleEndlessVictory() {
   matchId = null;
   state = null;
   priorMatch = null;
-  try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
+  try { lsRemove('penombra:last-match'); } catch (_) { /* ignore */ }
 
   if (isNewRecord) {
     await showEndlessRecordPopup(progress.best);
@@ -3932,7 +3975,7 @@ async function handleStoryVictory() {
     progress.currentBoss = null;
     saveStoryProgress(progress);
     // Marca anche la vecchia chiave per compatibilità
-    try { localStorage.setItem('bellum:story-completed', '1'); } catch { /* ignore */ }
+    try { lsSet('penombra:story-completed', '1'); } catch { /* ignore */ }
 
     // Schermata ad hoc: griglia via, solo complimenti della Mummia
     clearMatchUI();
@@ -4037,7 +4080,7 @@ async function recoverPrior() {
     }
     matchId = id; state = result.state; flow = null; priorMatch = null; deathDraft = {choiceId:null,instanceIds:[]};
     await setBaseMatchInProgress(true, id);
-    try { localStorage.setItem('bellum:last-match', id); } catch (_) { /* ignore */ }
+    try { lsSet('penombra:last-match', id); } catch (_) { /* ignore */ }
     await render();
     notice('Partita precedente ripristinata.', 'success');
     queuePresentation(true);
@@ -4332,7 +4375,7 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
     hideEndlessStart();
     hideHome(); // importante: dopo anima scene la Home resta aperta e copre stage/dialoghi
     closeColorDialog();
-    localStorage.setItem('bellum:last-match', matchId);
+    lsSet('penombra:last-match', matchId);
     // Partita pronta: togli overlay così moneta / dialoghi sono cliccabili
     hideMatchLoading();
 
@@ -4474,7 +4517,7 @@ async function init() {
   document.addEventListener('keydown',e => { if (e.key === 'Escape' && !obligatory()) { if (!$('anima-scene')?.classList.contains('hidden') && !busy) closeColorDialog(); else if (!$('graveyard-dialog')?.classList.contains('hidden')) closeGraveyard(); else if (view) close(); } });
   await render();
   // NON mostriamo la Home qui: solo dopo che l’utente ha confermato «Sono io» o ha fatto login
-  // (evento bellum:auth-ready).
+  // (evento penombra:auth-ready).
 }
 // Solo dopo conferma identità (login o «Sono io») mostriamo la Home.
 // Importante: showHome() SUBITO (sincrono) così non si vede la griglia vuota
@@ -4782,7 +4825,7 @@ async function enterPvpMatch(matchId, preloadedState = null) {
     matchId = mid;
     window.__pvp = true;
     syncMyPlayerIndex(user?.id);
-    localStorage.setItem('bellum:last-match', matchId);
+    lsSet('penombra:last-match', matchId);
     flow = null;
     deathDraft = { choiceId: null, instanceIds: [] };
     await render();
@@ -4831,7 +4874,7 @@ async function handlePvpFinished() {
   matchId = null;
   state = null;
   currentMode = 'base';
-  try { localStorage.removeItem('bellum:last-match'); } catch (_) {}
+  try { lsRemove('penombra:last-match'); } catch (_) {}
   try {
     document.getElementById('auth-screen')?.classList.add('hidden');
     document.getElementById('game-screen')?.classList.remove('hidden');
@@ -4868,7 +4911,7 @@ function showPvpResultPopup(title) {
 }
 
 
-window.addEventListener('bellum:auth-ready', () => {
+window.addEventListener('penombra:auth-ready', () => {
   // Solo Home (piramidi). Il dialog «spoglie» esce SOLO al click sulla piramide «Partita base».
   priorProbed = false;
   _profileCache = null;

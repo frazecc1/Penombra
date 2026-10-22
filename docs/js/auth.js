@@ -98,7 +98,7 @@ function paintLoginEyes() {
   const right = document.getElementById('mummy-eye-r');
   if (!left || !right) return;
   let prev = [];
-  try { prev = JSON.parse(sessionStorage.getItem('bellum:last-eyes') || '[]'); } catch { prev = []; }
+  try { prev = JSON.parse(sessionStorage.getItem('penombra:last-eyes') || sessionStorage.getItem('bellum:last-eyes') || '[]'); } catch { prev = []; }
   const pool = EYE_COLORS.slice();
   // Evita la stessa coppia (stesso ordine) della volta precedente.
   let a, b, guard = 0;
@@ -109,7 +109,7 @@ function paintLoginEyes() {
   } while (guard < 20 && prev.length === 2 && a.id === prev[0] && b.id === prev[1]);
   left.style.setProperty('--eye-iris', a.iris);
   right.style.setProperty('--eye-iris', b.iris);
-  try { sessionStorage.setItem('bellum:last-eyes', JSON.stringify([a.id, b.id])); } catch { /* ignore */ }
+  try { sessionStorage.setItem('penombra:last-eyes', JSON.stringify([a.id, b.id])); } catch { /* ignore */ }
 }
 
 /** Schermata mummia: sempre visibile all’ingresso / dopo sconfitta. */
@@ -150,7 +150,7 @@ async function showGameScreen(user) {
     signedInUser.textContent = username ? `@${username}` : 'Giocatore';
   }
   window.dispatchEvent(
-    new CustomEvent('bellum:auth-ready', {
+    new CustomEvent('penombra:auth-ready', {
       detail: { user },
     }),
   );

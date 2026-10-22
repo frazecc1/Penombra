@@ -4,7 +4,7 @@
  * Controllo dal pannello Impostazioni (#music-mute-button).
  */
 
-const MUSIC_KEY = 'bellum:music-muted';
+const MUSIC_KEY = 'penombra:music-muted';
 const MUSIC_CANDIDATES = ['musics/base.mp3', 'musics/egiziana.mp3'];
 const VOLUME = 0.35;
 
@@ -14,7 +14,7 @@ let resolvedSrc = null;
 
 function isMuted() {
   try {
-    return localStorage.getItem(MUSIC_KEY) === '1';
+    return (localStorage.getItem(MUSIC_KEY) ?? localStorage.getItem('bellum:music-muted')) === '1';
   } catch (_) {
     return false;
   }
@@ -115,7 +115,7 @@ if (document.readyState === 'loading') {
   void init();
 }
 
-window.addEventListener('bellum:auth-ready', () => {
+window.addEventListener('penombra:auth-ready', () => {
   void tryPlay();
 });
 document.addEventListener('pointerdown', () => { void tryPlay(); }, { once: true, capture: true });
