@@ -342,3 +342,16 @@ Mitigazioni client (v26):
 | Placeholder | `docs/img/png/missing/missing.webp` |
 | Favicon | `docs/favicon.ico` |
 | Apple touch | `docs/apple-touch-icon.png` |
+
+
+## Boot loader (`docs/js/boot.js`)
+
+All’apertura del sito compare una schermata di caricamento con barra.
+Precarica solo gli asset **utili alla Partita base / home** (immagini WebP + `musics/base.mp3`).
+Non scarica le tracce `musics/Egipt/*` (verranno legate alle piramidi in seguito).
+
+Piramidi attese in `docs/img/UI/HOME/`:
+- `piramide-storia.webp`
+- `piramide-endless.webp`
+- `piramide-pvp.webp`
+- `piramide-base.webp`

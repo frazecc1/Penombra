@@ -1,13 +1,16 @@
 /**
- * Musica di sottofondo in loop (docs/musics/egiziana.mp3).
+ * Musica di sottofondo in loop.
+ * Default: musics/base.mp3 (fallback: musics/egiziana.mp3).
  * Controllo dal pannello Impostazioni (#music-mute-button).
  */
 
 const MUSIC_KEY = 'bellum:music-muted';
+const MUSIC_CANDIDATES = ['musics/base.mp3', 'musics/egiziana.mp3'];
 const VOLUME = 0.35;
 
 const audio = document.getElementById('bg-music');
 const btn = document.getElementById('music-mute-button');
+let resolvedSrc = null;
 
 function isMuted() {
   try {
@@ -15,6 +18,21 @@ function isMuted() {
   } catch (_) {
     return false;
   }
+}
+
+async function resolveMusicSrc() {
+  if (resolvedSrc) return resolvedSrc;
+  for (const src of MUSIC_CANDIDATES) {
+    try {
+      const res = await fetch(src, { method: 'HEAD', cache: 'force-cache' });
+      if (res.ok) {
+        resolvedSrc = src;
+        return src;
+      }
+    } catch (_) { /* try next */ }
+  }
+  resolvedSrc = MUSIC_CANDIDATES[0];
+  return resolvedSrc;
 }
 
 function setMuted(muted) {
@@ -41,11 +59,15 @@ function updateButton() {
   const title = document.getElementById('music-mute-title');
   const desc = document.getElementById('music-mute-desc');
   if (title) title.textContent = muted ? 'Musica (spenta)' : 'Musica';
-  if (desc) desc.textContent = muted ? 'Tocca per riattivare il sottofondo' : 'Sottofondo egiziano in loop';
+  if (desc) desc.textContent = muted ? 'Tocca per riattivare il sottofondo' : 'Sottofondo in loop';
 }
 
 async function tryPlay() {
   if (!audio || isMuted()) return;
+  const src = await resolveMusicSrc();
+  if (audio.getAttribute('src') !== src) {
+    audio.src = src;
+  }
   audio.muted = false;
   audio.volume = VOLUME;
   audio.loop = true;
@@ -61,10 +83,13 @@ function unlockOnGesture() {
   void tryPlay();
 }
 
-function init() {
+async function init() {
   if (!audio) return;
   audio.loop = true;
   audio.volume = VOLUME;
+  audio.preload = 'auto';
+  await resolveMusicSrc();
+  if (resolvedSrc) audio.src = resolvedSrc;
   if (isMuted()) audio.muted = true;
   else {
     audio.muted = false;
@@ -85,15 +110,12 @@ function init() {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => { void init(); });
 } else {
-  init();
+  void init();
 }
 
-
-// Avvio dopo login / «Sono io» (gesto utente già avvenuto → i browser permettono play)
 window.addEventListener('bellum:auth-ready', () => {
   void tryPlay();
 });
-// Fallback: primo click ovunque
 document.addEventListener('pointerdown', () => { void tryPlay(); }, { once: true, capture: true });

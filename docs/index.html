@@ -18,8 +18,47 @@
     <link rel="stylesheet" href="css/mostrissimi_mini.css" />
     <link rel="stylesheet" href="css/tokens-stile-b.css" />
     <link rel="stylesheet" href="css/stage.css?v=14" />
+  
+    <style id="boot-critical">
+      #boot-screen {
+        position: fixed; inset: 0; z-index: 99999;
+        display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(ellipse at 50% 30%, #2e1f11 0%, #0b0806 84%);
+        color: #efe2c0; font-family: system-ui, sans-serif;
+        transition: opacity .3s ease;
+      }
+      #boot-screen.boot-screen-out { opacity: 0; pointer-events: none; }
+      .boot-panel { width: min(92vw, 360px); text-align: center; padding: 1.5rem; }
+      .boot-title {
+        margin: 0 0 .5rem; font-size: 1.75rem; letter-spacing: .06em;
+        color: #e8c565; font-weight: 800;
+      }
+      .boot-status { margin: 0 0 1rem; font-size: .95rem; color: #c9b98a; min-height: 1.3em; }
+      .boot-bar {
+        height: 12px; border-radius: 999px; overflow: hidden;
+        background: #1a120a; border: 2px solid #c9a043;
+        box-shadow: 0 2px 0 #1a0a05;
+      }
+      #boot-bar-fill {
+        height: 100%; width: 0%;
+        background: linear-gradient(90deg, #c9a043, #e8c565);
+        transition: width .2s ease;
+      }
+      .boot-pct { margin: .55rem 0 0; font-size: .85rem; color: #e8c565; font-weight: 700; }
+      html:not(.boot-done) .app-shell { visibility: hidden; }
+    </style>
   </head>
   <body>
+
+    <div id="boot-screen" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Caricamento Penombra">
+      <div class="boot-panel">
+        <p class="boot-title">Penombra</p>
+        <p class="boot-status" id="boot-status">Caricamento…</p>
+        <div class="boot-bar"><div id="boot-bar-fill"></div></div>
+        <p class="boot-pct" id="boot-pct">0%</p>
+      </div>
+    </div>
+
     <noscript>Penombra richiede JavaScript per funzionare.</noscript>
     <main class="app-shell">
        <section id="auth-screen" class="screen auth-screen" aria-labelledby="auth-title">
@@ -163,7 +202,7 @@
       </section>
     </main>
     <!-- Musica di sottofondo (loop). I browser richiedono un click prima di far partire l’audio. -->
-    <audio id="bg-music" src="musics/egiziana.mp3" loop preload="auto" playsinline></audio>
+    <audio id="bg-music" loop preload="auto" playsinline></audio></audio>
     <!-- Impostazioni sempre visibili -->
     <div class="settings-root">
       <button id="settings-button" type="button" class="settings-button" aria-label="Impostazioni" aria-haspopup="true" aria-expanded="false" aria-controls="settings-panel" title="Impostazioni">⚙</button>
@@ -201,8 +240,9 @@
         </button>
       </div>
     </div>
-    <script type="module" src="js/game.js?v=28"></script>
+    <script type="module" src="js/boot.js?v=1"></script>
+    <script type="module" src="js/game.js?v=29"></script>
     <script type="module" src="js/trap_preview.js?v=6"></script>
-    <script type="module" src="js/music.js?v=6"></script>
+    <script type="module" src="js/music.js?v=8"></script>
   </body>
 </html>

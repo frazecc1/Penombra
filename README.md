@@ -17,6 +17,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v29** — Schermata di **boot obbligatoria** con barra: precache immagini UI + `musics/base.mp3`. Path piramidi: `piramide-storia/endless/pvp/base.webp`.
+
+
 - **v28** — Path asset aggiornati (WebP): login/piramidi/dorso; avversario Partita base = `img/png/domanda/domanda.webp`; apple-touch-icon.png.
 
 

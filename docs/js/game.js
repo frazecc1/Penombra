@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v28-asset-paths-domanda',
+  version: 'v29-boot-loader',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -3086,9 +3086,9 @@ function homeDialog() {
   }
 
   // Lab Penombra: piramidi 1–3 visibili ma inerti (placeholder future modalità).
-  const storyBtn = makePyramid('home-story', '???', true, null, 'img/UI/HOME/piramide1.webp');
-  const endlessBtn = makePyramid('home-endless', '???', true, null, 'img/UI/HOME/piramide1.webp');
-  const pvpBtn = makePyramid('home-pvp', '???', true, null, 'img/UI/HOME/piramide1.webp');
+  const storyBtn = makePyramid('home-story', '???', true, null, 'img/UI/HOME/piramide-storia.webp');
+  const endlessBtn = makePyramid('home-endless', '???', true, null, 'img/UI/HOME/piramide-endless.webp');
+  const pvpBtn = makePyramid('home-pvp', '???', true, null, 'img/UI/HOME/piramide-pvp.webp');
 
   // 4ª piramide: Partita base (lab). In produzione nascondere con SHOW_BASE_MATCH_PYRAMID=false.
   const baseBtn = makePyramid('home-base', 'Partita base', false, () => {
@@ -3096,7 +3096,7 @@ function homeDialog() {
     hideStoryStart();
     // Sempre passa da startScreen: probe last_match + dialog RIPRENDI / nuovo inizio
     startScreen().catch(fail);
-  }, null);
+  }, 'img/UI/HOME/piramide-base.webp');
   if (!SHOW_BASE_MATCH_PYRAMID) {
     baseBtn.classList.add('hidden');
     baseBtn.disabled = true;
