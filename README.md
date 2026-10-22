@@ -17,6 +17,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v31** — Dialog unificati (stile A) + «Guarda campo di battaglia»; piramidi non-base: messaggio alieni; avversario sempre nomeavversario/domanda.
+
+
 - **v30** — Boot **dopo** Accedi/Sono io; flag `base_match_in_progress` (spoglie istantanee); caricamento salvataggio solo su RIPRENDI; messaggi a tema mummia.
 
 

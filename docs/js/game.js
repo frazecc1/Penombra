@@ -17,7 +17,7 @@ function funnyBootLine(i) { return FUNNY_BOOT[i % FUNNY_BOOT.length]; }
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v30-base-flag-boot-after-login',
+  version: 'v31-unified-dialogs-base-only-home',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -103,30 +103,99 @@ const faction = d => {
 // ---------- Passo 1: helper di presentazione (stage) ----------
 const stageRoot = () => $('stage') ?? document.body; // tutti i dialoghi vivono dentro la colonna centrale
 
+/** Partita base: avversario sempre anonimo */
+const OPPONENT_NAME = 'nomeavversario';
+const OPPONENT_IMG = 'img/png/domanda/domanda.webp';
+function opponentImageHtml(size = 140) {
+  const s = Number(size) || 140;
+  return `<img src="${OPPONENT_IMG}" alt="${OPPONENT_NAME}" width="${s}" height="${s}" style="width:${s}px;height:${s}px;max-width:40vw;object-fit:cover;border-radius:10px;border:2px solid #c9a043" onerror="this.style.display='none'">`;
+}
+
+function clearBattlefieldPeek() {
+  const chip = document.getElementById('game-dialog-restore');
+  if (chip) chip.remove();
+  document.querySelectorAll('.is-peeking').forEach((el) => el.classList.remove('is-peeking'));
+}
+
+/** Nasconde temporaneamente un overlay a schermo intero per vedere la plancia. */
+function enterBattlefieldPeek(overlayEl) {
+  if (!overlayEl) return;
+  clearBattlefieldPeek();
+  overlayEl.classList.add('is-peeking');
+  const chip = document.createElement('button');
+  chip.id = 'game-dialog-restore';
+  chip.type = 'button';
+  chip.className = 'primary-button game-dialog-restore-chip';
+  chip.textContent = 'Torna al messaggio';
+  chip.addEventListener('click', (e) => {
+    e.stopPropagation();
+    overlayEl.classList.remove('is-peeking');
+    clearBattlefieldPeek();
+  });
+  document.body.appendChild(chip);
+}
+
+function ensurePeekOnBar(actionsEl, overlayEl) {
+  if (!actionsEl || !overlayEl) return;
+  if (actionsEl.querySelector('[data-peek-btn]')) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.setAttribute('data-peek-btn', '1');
+  btn.className = 'secondary-button';
+  btn.textContent = 'Guarda campo di battaglia';
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    enterBattlefieldPeek(overlayEl);
+  });
+  actionsEl.appendChild(btn);
+}
+function appendBattlefieldPeekButton(actionsEl, overlayEl) {
+  ensurePeekOnBar(actionsEl, overlayEl);
+}
+
+
+
 /** Overlay di attesa: blocca click sulla Home mentre si crea/carica la partita. */
 function showMatchLoading(text) {
+  clearBattlefieldPeek();
   let el = document.getElementById('match-loading-overlay');
   if (!el) {
     el = document.createElement('div');
     el.id = 'match-loading-overlay';
+    el.className = 'game-dialog-overlay';
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
     document.body.appendChild(el);
   }
-  el.style.cssText = 'position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(8,6,4,.82);padding:1.2rem;';
-  const msg = String(text || 'Caricamento…').replace(/\n/g, '<br>');
-  el.innerHTML = '<div class="panel" style="width:min(92vw,360px);margin:auto;padding:1.3rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000"><p style="margin:0;line-height:1.45;font-size:1.05rem">' + msg + '</p></div>';
+  el.classList.remove('hidden', 'is-peeking');
   el.hidden = false;
-  el.classList.remove('hidden');
+  el.style.cssText = '';
+  const msg = String(text || 'Caricamento…').replace(/
+/g, '<br>');
+  el.innerHTML = '';
+  const panel = document.createElement('div');
+  panel.className = 'game-dialog-panel';
+  const h = document.createElement('h2');
+  h.className = 'game-dialog-title';
+  h.textContent = 'Un attimo';
+  const body = document.createElement('div');
+  body.className = 'game-dialog-body';
+  body.innerHTML = '<p>' + msg + '</p>';
+  const actions = document.createElement('div');
+  actions.className = 'game-dialog-actions';
+  appendBattlefieldPeekButton(actions, el);
+  panel.append(h, body, actions);
+  el.append(panel);
 }
 function hideMatchLoading() {
+  clearBattlefieldPeek();
   const el = document.getElementById('match-loading-overlay');
   if (!el) return;
   el.hidden = true;
   el.classList.add('hidden');
-  el.style.display = 'none';
   el.innerHTML = '';
 }
+
 // Debug F12: window.hideMatchLoading()
 try { window.hideMatchLoading = hideMatchLoading; window.showMatchLoading = showMatchLoading; } catch (_) {}
 
@@ -279,7 +348,7 @@ function wireReduceMotion() {
   });
 }
 
-/** Preferenza: conferma automatica dei popup «Ho capito» (solo phase-banner, non dialoghi Mummia). */
+/** Preferenza: conferma automatica dei popup «Ho capito». */
 function isAutoNotice() {
   try { return localStorage.getItem('bellum:auto-ho-capito') === '1'; } catch (_) { return false; }
 }
@@ -292,25 +361,27 @@ function applyAutoNotice(on) {
 /** Overlay dialog unificato (stile card-detail) nella colonna centrale. */
 function ensureGameDialogRoot() {
   let el = $('game-dialog-overlay');
-  if (el) return el;
-  el = document.createElement('div');
-  el.id = 'game-dialog-overlay';
-  el.className = 'game-dialog-overlay hidden';
-  el.setAttribute('role', 'dialog');
-  el.setAttribute('aria-modal', 'true');
-  stageRoot().append(el);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'game-dialog-overlay';
+    el.className = 'game-dialog-overlay hidden';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    stageRoot().append(el);
+  }
   return el;
 }
 
 /**
- * Dialog «Ho capito» unificato.
- * Rispetta Impostazioni → Auto Ho capito (chiusura automatica ~900ms).
+ * Dialog unificato stile A (titolo + testo + immagine opz. + bottoni).
+ * Sempre: «Guarda campo di battaglia».
  */
 function showHoCapitoDialog({ title, bodyHtml, imageHtml = '' }) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
+    clearBattlefieldPeek();
     const root = ensureGameDialogRoot();
     root.innerHTML = '';
-    root.classList.remove('hidden');
+    root.classList.remove('hidden', 'is-peeking');
     const panel = document.createElement('div');
     panel.className = 'game-dialog-panel';
     const h = document.createElement('h2');
@@ -328,27 +399,28 @@ function showHoCapitoDialog({ title, bodyHtml, imageHtml = '' }) {
     }
     const actions = document.createElement('div');
     actions.className = 'game-dialog-actions';
-    const ok = document.createElement('button');
-    ok.type = 'button';
-    ok.className = 'primary-button game-dialog-ok';
-    ok.textContent = 'Ho capito';
     let settled = false;
     let autoTimer = null;
     const done = () => {
       if (settled) return;
       settled = true;
-      clearTimeout(autoTimer);
+      if (autoTimer) clearTimeout(autoTimer);
+      clearBattlefieldPeek();
       root.classList.add('hidden');
       root.innerHTML = '';
       resolve();
     };
-    ok.onclick = e => { e.stopPropagation(); done(); };
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'primary-button game-dialog-ok';
+    ok.textContent = 'Ho capito';
+    ok.onclick = (e) => { e.stopPropagation(); done(); };
     actions.append(ok);
+    appendBattlefieldPeekButton(actions, root);
     panel.append(actions);
     root.append(panel);
-    // click sullo sfondo chiude (come phase-banner)
-    root.onclick = e => {
-      if (e.target === root) done();
+    root.onclick = (e) => {
+      if (e.target === root && !root.classList.contains('is-peeking')) done();
     };
     if (isAutoNotice()) {
       autoTimer = setTimeout(done, 900);
@@ -356,12 +428,13 @@ function showHoCapitoDialog({ title, bodyHtml, imageHtml = '' }) {
   });
 }
 
-/** Pannello conferma generico (stesso stile). buttons: [{ label, primary?, onClick }] */
+/** Conferma generica (stesso stile). buttons: [{ label, primary?, value, onClick? }] */
 function showGameConfirmDialog({ title, bodyHtml, imageHtml = '', buttons }) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
+    clearBattlefieldPeek();
     const root = ensureGameDialogRoot();
     root.innerHTML = '';
-    root.classList.remove('hidden');
+    root.classList.remove('hidden', 'is-peeking');
     const panel = document.createElement('div');
     panel.className = 'game-dialog-panel';
     const h = document.createElement('h2');
@@ -383,6 +456,7 @@ function showGameConfirmDialog({ title, bodyHtml, imageHtml = '', buttons }) {
     const done = (val) => {
       if (settled) return;
       settled = true;
+      clearBattlefieldPeek();
       root.classList.add('hidden');
       root.innerHTML = '';
       resolve(val);
@@ -392,17 +466,19 @@ function showGameConfirmDialog({ title, bodyHtml, imageHtml = '', buttons }) {
       btn.type = 'button';
       btn.className = b.primary ? 'primary-button' : 'secondary-button';
       btn.textContent = b.label;
-      btn.onclick = e => {
+      btn.onclick = (e) => {
         e.stopPropagation();
         if (b.onClick) b.onClick();
         done(b.value);
       };
       actions.append(btn);
     }
+    appendBattlefieldPeekButton(actions, root);
     panel.append(actions);
     root.append(panel);
   });
 }
+
 
 
 function wireAutoNotice() {
@@ -420,7 +496,7 @@ function wireAutoNotice() {
 }
 let narratorResolver = null;
 function setNarratorImage(src) {
-  const url = src || 'img/png/domanda/domanda.webp';
+  const url = src || OPPONENT_IMG;
   for (const id of ['narrator-popup-img', 'narrator-desk-img']) {
     const img = $(id);
     if (!img) continue;
@@ -1561,6 +1637,7 @@ async function showTrapPickLarge(r) {
     add('Passa', () => chooseTrap({ windowId: r.window_id, action: 'pass' }));
     $('card-detail-overlay')?.classList.remove('hidden');
     document.body.classList.add('detail-open');
+  ensurePeekOnBar($('detail-actions'), $('card-detail-overlay'));
     return;
   }
 
@@ -1590,6 +1667,7 @@ async function showTrapPickLarge(r) {
 
   $('card-detail-overlay')?.classList.remove('hidden');
   document.body.classList.add('detail-open');
+  ensurePeekOnBar($('detail-actions'), $('card-detail-overlay'));
 }
 async function chooseTrap(choice) {
   const r = reaction();
@@ -1774,6 +1852,7 @@ async function inspect(kind,id,extra={}) {
   }
   add('Chiudi',close);
   $('card-detail-overlay').classList.remove('hidden'); document.body.classList.add('detail-open');
+  ensurePeekOnBar($('detail-actions'), $('card-detail-overlay'));
 }
 
 
@@ -3134,10 +3213,15 @@ function homeDialog() {
     return wrap;
   }
 
-  // Lab Penombra: piramidi 1–3 visibili ma inerti (placeholder future modalità).
-  const storyBtn = makePyramid('home-story', '???', true, null, 'img/UI/HOME/piramide-storia.webp');
-  const endlessBtn = makePyramid('home-endless', '???', true, null, 'img/UI/HOME/piramide-endless.webp');
-  const pvpBtn = makePyramid('home-pvp', '???', true, null, 'img/UI/HOME/piramide-pvp.webp');
+  // Piramidi future: stesso aspetto, click → messaggio alieni (solo Partita base è giocabile).
+  const alienPyramid = () => showHoCapitoDialog({
+    title: 'In costruzione',
+    bodyHtml: '<p>Gli alieni stanno ancora costruendo questa piramide.</p>',
+    imageHtml: opponentImageHtml(120),
+  });
+  const storyBtn = makePyramid('home-story', '???', false, () => { void alienPyramid(); }, 'img/UI/HOME/piramide-storia.webp');
+  const endlessBtn = makePyramid('home-endless', '???', false, () => { void alienPyramid(); }, 'img/UI/HOME/piramide-endless.webp');
+  const pvpBtn = makePyramid('home-pvp', '???', false, () => { void alienPyramid(); }, 'img/UI/HOME/piramide-pvp.webp');
 
   // 4ª piramide: Partita base (lab). In produzione nascondere con SHOW_BASE_MATCH_PYRAMID=false.
   const baseBtn = makePyramid('home-base', 'Partita base', false, () => {
@@ -3167,12 +3251,9 @@ function showHome() {
 
   // Lab: piramidi 1–3 sempre bloccate; 4ª visibile solo se flag lab
   for (const id of ['home-story', 'home-endless', 'home-pvp']) {
-    const btn = $(id);
-    if (!btn) continue;
-    btn.classList.add('is-locked');
-    btn.disabled = true;
-    const label = btn.querySelector('.pyramid-label');
-    if (label) label.textContent = '???';
+    const b = $(id);
+    if (!b) continue;
+    // Cliccabili: messaggio alieni (onClick già su makePyramid)
   }
   const baseBtn = $('home-base');
   if (baseBtn) {
@@ -3826,39 +3907,15 @@ function showCheatCodeChoice(progress) {
   });
 }
 
-/** Dialogo semplice della Mummia (testo + bottone Continua). */
+/** Dialogo avversario (anonimo: nomeavversario + domanda). */
 function showOpponentDialog(text) {
-  return new Promise(resolve => {
-    let el = $('opponent-dialog');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'opponent-dialog';
-      el.className = 'card-detail-overlay';
-      el.setAttribute('role', 'dialog');
-      el.setAttribute('aria-modal', 'true');
-      el.style.zIndex = '150';
-      stageRoot().append(el);
-    }
-    el.innerHTML = '';
-    const panel = document.createElement('div');
-    panel.className = 'panel';
-    panel.style.cssText = 'width:min(92vw,440px);margin:auto;padding:1.3rem 1.2rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
-
-    const body = document.createElement('p');
-    body.style.cssText = 'margin:0 0 1.2rem;line-height:1.5;font-size:1.08rem;white-space:pre-line';
-    body.textContent = text;
-
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'primary-button';
-    btn.textContent = 'Continua';
-    btn.onclick = () => { el.classList.add('hidden'); resolve(); };
-
-    panel.append(body, btn);
-    el.append(panel);
-    el.classList.remove('hidden');
+  return showHoCapitoDialog({
+    title: OPPONENT_NAME,
+    bodyHtml: `<p style="white-space:pre-line">${String(text || '').replace(/</g, '&lt;')}</p>`,
+    imageHtml: opponentImageHtml(150),
   });
 }
+
 
 /** Dopo una vittoria in Storia: aggiorna progressi e propone il prossimo passo.
  *  Prima pulisce la griglia, poi mostra la schermata di complimenti della Mummia. */

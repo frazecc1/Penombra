@@ -2998,3 +2998,30 @@ body.notice-open #stage .action-panel button {
   flex: none !important;
   min-height: var(--tap) !important;
 }
+
+
+/* —— Peek campo di battaglia (tutti gli overlay unificati) —— */
+.game-dialog-overlay.is-peeking,
+#match-loading-overlay.is-peeking,
+.card-detail-overlay.is-peeking,
+#game-dialog-overlay.is-peeking {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+.game-dialog-overlay.is-peeking > *,
+#match-loading-overlay.is-peeking > *,
+.card-detail-overlay.is-peeking > * {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+#game-dialog-restore.game-dialog-restore-chip {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100001;
+  pointer-events: auto !important;
+  min-width: 12rem;
+  box-shadow: 0 8px 28px #000a;
+}
