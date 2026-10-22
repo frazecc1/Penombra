@@ -17,7 +17,7 @@ function funnyBootLine(i) { return FUNNY_BOOT[i % FUNNY_BOOT.length]; }
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'versioneB_2-no-story-endless',
+  version: 'versioneB_4-peek-hud',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -140,13 +140,18 @@ function clearBattlefieldPeek() {
   const chip = document.getElementById('game-dialog-restore');
   if (chip) chip.remove();
   document.querySelectorAll('.is-peeking').forEach((el) => el.classList.remove('is-peeking'));
+  try { document.body.classList.remove('battlefield-peek'); } catch (_) {}
 }
 
-/** Nasconde temporaneamente un overlay a schermo intero per vedere la plancia. */
+/** Nasconde temporaneamente un overlay a schermo intero per vedere (e toccare) la plancia. */
 function enterBattlefieldPeek(overlayEl) {
   if (!overlayEl) return;
-  clearBattlefieldPeek();
+  // Non chiamare clearBattlefieldPeek(): se c’era già un peek sotto (es. Ho capito),
+  // resta nascosto; togliamo solo il chip vecchio.
+  const oldChip = document.getElementById('game-dialog-restore');
+  if (oldChip) oldChip.remove();
   overlayEl.classList.add('is-peeking');
+  try { document.body.classList.add('battlefield-peek'); } catch (_) {}
   const chip = document.createElement('button');
   chip.id = 'game-dialog-restore';
   chip.type = 'button';
@@ -154,8 +159,17 @@ function enterBattlefieldPeek(overlayEl) {
   chip.textContent = 'Torna al messaggio';
   chip.addEventListener('click', (e) => {
     e.stopPropagation();
+    // Esci dal peek di questo overlay; se ne restano altri is-peeking, tieni la modalità campo
     overlayEl.classList.remove('is-peeking');
-    clearBattlefieldPeek();
+    const still = document.querySelector('.is-peeking');
+    const c = document.getElementById('game-dialog-restore');
+    if (c) c.remove();
+    if (!still) {
+      try { document.body.classList.remove('battlefield-peek'); } catch (_) {}
+    } else {
+      // Ricrea chip per l’overlay ancora in peek
+      enterBattlefieldPeek(still);
+    }
   });
   document.body.appendChild(chip);
 }

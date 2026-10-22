@@ -395,30 +395,19 @@ In Partita base i chip `#player-medallion` / `#opponent-medallion` mostrano il p
 ### Trappole
 Solo UI dettaglio grande (`showTrapPickLarge` in `game.js`). File `trap_preview.js` rimosso.
 
-### Stato pulizia
-- Client (B2): solo Partita base.
-- Backend (B3): niente lobby PvP né `createPvpMatch`; create match solo colori lab.
+### Roadmap residuale
+Ancora presenti in `game.js` (da rimuovere in versioneB_2+): rami Storia/Endless, BOSS_DATA, progressi.
+Backend: `lobby.ts` e route `/lobby/*` ancora nel repo (da rimuovere in fase backend).
 
 
 
 ---
 
-## Note versioneB_3 (backend lab)
+## Note versioneB_4 (peek UI)
 
-### Rimosso
-- `backend/lobby.ts`
-- Route API: `/lobby/join`, `/lobby/heartbeat`, `/lobby/leave`, `/lobby/players`, `/lobby/challenge*`, `/lobby/challenges`
-- `createPvpMatch` (export e implementazione)
+«Guarda campo di battaglia» nasconde l’overlay messaggio senza bloccare l’interazione:
+- overlay `.is-peeking` → invisibile e non riceve eventi
+- chip fisso in **alto** (`#game-dialog-restore`)
+- `body.battlefield-peek` → tap su celle / mano / Fine turno operativi anche su touch
 
-### `/match/create` (lab)
-Body rilevante:
-- `primaryColor`, `secondaryColor` (obbligatori)
-- `tertiaryColor` (opzionale, scena anima)
-- `firstPlayer` (opzionale 0|1)
-- `gameMode: 'base'` (per flag profilo)
-
-Niente più oggetto `story` (vite boss, medaglioni, life-cut).
-
-### Conservato nel motore
-- `createNewMatch` con opzioni legacy ancora accettate a livello TypeScript se passate, ma l’API non le espone più.
-- Rami `match_mode === 'pvp'` in `publicState` / `endHumanTurn` restano come guardie inerti (nessuna partita PvP nuova).
+Chiudere il peek: «Torna al messaggio» (o chiudere il dialogo se previsto).
