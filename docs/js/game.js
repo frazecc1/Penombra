@@ -17,7 +17,7 @@ function funnyBootLine(i) { return FUNNY_BOOT[i % FUNNY_BOOT.length]; }
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v31-unified-dialogs-base-only-home',
+  version: 'v32-fix-regex-newline',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -170,8 +170,8 @@ function showMatchLoading(text) {
   el.classList.remove('hidden', 'is-peeking');
   el.hidden = false;
   el.style.cssText = '';
-  const msg = String(text || 'Caricamento…').replace(/
-/g, '<br>');
+  const msg = String(text || 'Caricamento…').split('\n').join('<br>');
+').join('<br>');
   el.innerHTML = '';
   const panel = document.createElement('div');
   panel.className = 'game-dialog-panel';
@@ -607,7 +607,8 @@ function cardHTML(d, mini = false, cell = null) {
   const fxShort = effectPreview(d, mini ? 90 : 160);
   const rulesFull = escape(d.effect_text || '')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>');
+    .split('
+').join('<br>');
 
   if (mini) {
     return `<article class="board-card fan-like ${cls}${isCreature ? '' : ' no-stats'}">
