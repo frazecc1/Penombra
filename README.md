@@ -1,3 +1,11 @@
+## Note versioneB_3 (pulizia fase 3 — backend)
+
+* Eliminato `backend/lobby.ts` e tutte le route `/lobby/*`.
+* Rimosso `createPvpMatch` da `engine-core.ts` / `engine.ts` / `api.ts`.
+* `POST /match/create` accetta solo colori base (+ `tertiaryColor` / `firstPlayer` opzionali); niente body `story`.
+* Motore partita base invariato (turni, effetti, IA, spoglie).
+* Profilo: campo `story_progress` ancora letto/scritto se presente in DB (innocuo, non usato dal client lab).
+
 ## Note versioneB_2 (pulizia fase 2 — client)
 
 * Rimosso dal client tutto il codice **Storia / Endless / lobby PvP** (`game.js`).
@@ -5,7 +13,7 @@
 * Home invariata: 3 piramidi «alieni» + Partita base.
 * Medaglioni HUD: sempre placeholder «medaglione lasciato a casa per sbaglio».
 * `game.js` da ~4930 a ~3400 righe.
-* Backend lobby/story **ancora presenti** (prossimo: versioneB_3).
+* Backend lobby/PvP create rimossi in versioneB_3.
 
 ## Note versioneB_1 (pulizia fase 1)
 

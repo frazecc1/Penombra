@@ -1,13 +1,9 @@
-// backend/engine.ts — API pubblica del motore Bellum Penumbrum.
-// Mantiene invariati gli import esistenti da './engine.js' nel backend.
-// Pubblicare insieme a backend/types.ts, backend/engine-core.ts,
-// backend/api.ts e docs/js/game.js della consegna 3c.
+// backend/engine.ts — API pubblica del motore Penombra (lab Partita base).
 export {
   saveGameState,
   logMatchAction,
   getCardData,
   createNewMatch,
-  createPvpMatch,
   forfeitMatch,
   getMatchState,
   playCard,

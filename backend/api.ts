@@ -1,16 +1,11 @@
-// backend/api.ts — API HTTP Bellum Penumbrum, registro 3e ordinato e checkpoint pubblici.
+// backend/api.ts — API HTTP Penombra (lab Partita base).
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
-  attack, createNewMatch, createPvpMatch, forfeitMatch, endHumanTurn, getCardData, getMatchState, moveCreature,
+  attack, createNewMatch, forfeitMatch, endHumanTurn, getCardData, getMatchState, moveCreature,
   playCard, resolveTrapChoice, resolveDeathOrder, resolveTargetChoice,
   startMostrissimoSummon, payMostrissimoSacrifice, completeMostrissimoSummon,
 } from './engine.js';
-import {
-  lobbyJoin, lobbyLeave, lobbyHeartbeat, lobbyList, lobbyCreateChallenge,
-  lobbyGetChallenge, lobbyChallengesFor, lobbyDeclineChallenge, lobbyAcceptChallenge,
-  lobbySubmitColors, lobbyBothColorsReady, lobbyAttachMatch, lobbySetIdle,
-} from './lobby.js';
 import { advancePublicCheckpoint } from './engine-core.js';
 import { engineErrors } from './card-rules.js';
 import type {
@@ -372,67 +367,16 @@ apiRouter.post('/match/create', async (req: Request, res: Response) => {
     const secondary = deckFactionValue(body.secondaryColor, 'Colore secondario');
     if (primary === secondary) throw new Error('Scegli due colori diversi');
 
-    // Opzioni Storia / Endless (opzionali)
-    let createOpts: {
-      aiStartingLife?: number;
-      humanMedallion?: DeckFaction | null;
-      aiMedallion?: DeckFaction | null;
+    // Lab Partita base: colori + terziario opzionale (scena anima). Niente Storia/Endless.
+    const createOpts: {
       tertiaryColor?: DeckFaction | null;
-      aiPrimary?: DeckFaction | 'IND' | null;
-      aiDisplayName?: string | null;
       firstPlayer?: 0 | 1 | null;
-      aiLifeCutTurn?: number | null;
-      aiLifeAfterCut?: number | null;
     } = {};
-    // tertiaryColor anche a livello root (scena anima)
     if (body.tertiaryColor != null && body.tertiaryColor !== '') {
       createOpts.tertiaryColor = deckFactionValue(body.tertiaryColor, 'Colore terziario');
     }
     if (body.firstPlayer === 0 || body.firstPlayer === 1) {
       createOpts.firstPlayer = body.firstPlayer as 0 | 1;
-    }
-    const story = body.story;
-    if (story && typeof story === 'object' && !Array.isArray(story)) {
-      const st = story as Record<string, unknown>;
-      if (st.aiStartingLife != null) {
-        const life = Number(st.aiStartingLife);
-        if (!Number.isFinite(life) || life < 1 || life > 200) throw new Error('Vita boss non valida');
-        createOpts.aiStartingLife = Math.floor(life);
-      }
-      if (st.humanMedallion != null && st.humanMedallion !== '') {
-        createOpts.humanMedallion = deckFactionValue(st.humanMedallion, 'Medaglione');
-      } else if (st.humanMedallion === null) {
-        createOpts.humanMedallion = null;
-      }
-      if (st.aiMedallion != null && st.aiMedallion !== '') {
-        createOpts.aiMedallion = deckFactionValue(st.aiMedallion, 'Medaglione boss');
-      } else if (st.aiMedallion === null) {
-        createOpts.aiMedallion = null;
-      }
-      if (st.tertiaryColor != null && st.tertiaryColor !== '') {
-        createOpts.tertiaryColor = deckFactionValue(st.tertiaryColor, 'Colore terziario');
-      }
-      if (typeof st.aiPrimary === 'string' && st.aiPrimary.length > 0) {
-        if (st.aiPrimary === 'IND') {
-          createOpts.aiPrimary = 'IND';
-        } else {
-          createOpts.aiPrimary = deckFactionValue(st.aiPrimary, 'Boss IA');
-        }
-      }
-      if (typeof st.aiDisplayName === 'string' && st.aiDisplayName.trim()) {
-        createOpts.aiDisplayName = st.aiDisplayName.trim().slice(0, 80);
-      }
-      if (st.firstPlayer === 0 || st.firstPlayer === 1) {
-        createOpts.firstPlayer = st.firstPlayer as 0 | 1;
-      }
-      if (st.aiLifeCutTurn != null) {
-        const t = Number(st.aiLifeCutTurn);
-        if (Number.isFinite(t) && t >= 1 && t <= 50) createOpts.aiLifeCutTurn = Math.floor(t);
-      }
-      if (st.aiLifeAfterCut != null) {
-        const life = Number(st.aiLifeAfterCut);
-        if (Number.isFinite(life) && life >= 1 && life <= 200) createOpts.aiLifeAfterCut = Math.floor(life);
-      }
     }
 
     const { matchId, state } = await createNewMatch(userId, primary, secondary, createOpts);
@@ -584,149 +528,5 @@ apiRouter.post('/cards/validate', async (req: Request, res: Response) => {
 apiRouter.get('/cards/:id', async (req: Request, res: Response) => {
   try { await requireAuth(req);
     res.json({ card: await getCardData(requiredString(req.params.id, 'ID carta')) });
-  } catch (error) { respondError(res, error); }
-});
-
-
-// ========== LOBBY PvP — Camera del Re Lobbi II ==========
-function usernameFromAuth(req: Request, userId: string): string {
-  // Preferisci body/query, fallback id corto
-  const body = objectValue(req.body);
-  if (typeof body.username === 'string' && body.username.trim()) return body.username.trim().slice(0, 32);
-  return userId.slice(0, 8);
-}
-
-apiRouter.post('/lobby/join', async (req: Request, res: Response) => {
-  try {
-    const userId = await requireAuth(req);
-    const username = usernameFromAuth(req, userId);
-    const me = lobbyJoin(userId, username);
-    res.json({ me, players: lobbyList(userId) });
-  } catch (error) { respondError(res, error); }
-});
-
-apiRouter.post('/lobby/heartbeat', async (req: Request, res: Response) => {
-  try {
-    const userId = await requireAuth(req);
-    const username = usernameFromAuth(req, userId);
-    let me = lobbyHeartbeat(userId, username);
-    if (!me) me = lobbyJoin(userId, username);
-    const challenges = lobbyChallengesFor(userId).filter(c =>
-      c.status === 'pending' || c.status === 'accepted'
-    );
-    res.json({
-      me,
-      players: lobbyList(userId),
-      challenges,
-    });
-  } catch (error) { respondError(res, error); }
-});
-
-apiRouter.post('/lobby/leave', async (req: Request, res: Response) => {
-  try {
-    const userId = await requireAuth(req);
-    lobbyLeave(userId);
-    res.json({ ok: true });
-  } catch (error) { respondError(res, error); }
-});
-
-apiRouter.get('/lobby/players', async (req: Request, res: Response) => {
-  try {
-    const userId = await requireAuth(req);
-    res.json({ players: lobbyList(userId) });
-  } catch (error) { respondError(res, error); }
-});
-
-apiRouter.post('/lobby/challenge', async (req: Request, res: Response) => {
-  try {
-    const userId = await requireAuth(req);
-    const body = objectValue(req.body);
-    const toUserId = requiredString(body.toUserId, 'Avversario');
-    const username = usernameFromAuth(req, userId);
-    const challenge = lobbyCreateChallenge(userId, username, toUserId);
-    res.status(201).json({ challenge });
-  } catch (error) { respondError(res, error); }
-});
-
-apiRouter.post('/lobby/challenge/:id/decline', async (req: Request, res: Response) => {
-  try {
-    const userId = await requireAuth(req);
-    const id = requiredString(req.params.id, 'ID sfida');
-    const challenge = lobbyDeclineChallenge(id, userId);
-    res.json({ challenge });
-  } catch (error) { respondError(res, error); }
-});
-
-apiRouter.post('/lobby/challenge/:id/accept', async (req: Request, res: Response) => {
-  try {
-    const userId = await requireAuth(req);
-    const id = requiredString(req.params.id, 'ID sfida');
-    const challenge = lobbyAcceptChallenge(id, userId);
-    res.json({ challenge });
-  } catch (error) { respondError(res, error); }
-});
-
-/** Invia i colori dopo accettazione. Quando entrambi sono pronti, crea il match PvP. */
-apiRouter.post('/lobby/challenge/:id/colors', async (req: Request, res: Response) => {
-  try {
-    const userId = await requireAuth(req);
-    const id = requiredString(req.params.id, 'ID sfida');
-    const body = objectValue(req.body);
-    const primary = deckFactionValue(body.primaryColor, 'Colore principale');
-    const secondary = deckFactionValue(body.secondaryColor, 'Colore secondario');
-    if (primary === secondary) throw new Error('Scegli due colori diversi');
-    let tertiary: string | undefined;
-    if (body.tertiaryColor) tertiary = deckFactionValue(body.tertiaryColor, 'Colore terziario');
-    else {
-      const rest = deckFactions.filter(f => f !== primary && f !== secondary);
-      tertiary = rest[Math.floor(Math.random() * rest.length)];
-    }
-    if (tertiary === primary || tertiary === secondary) throw new Error('Terziario non valido');
-
-    let challenge = lobbySubmitColors(id, userId, primary, secondary, tertiary);
-    if (!lobbyBothColorsReady(challenge)) {
-      res.json({ challenge, match_id: null, waiting: true });
-      return;
-    }
-
-    // Entrambi pronti → moneta + createPvpMatch
-    const c1 = challenge.colors![challenge.fromUserId];
-    const c2 = challenge.colors![challenge.toUserId];
-    const firstPlayer = Math.random() < 0.5 ? 1 : 0;
-    const p1Colors = {
-      primary: c1.primary as 'CHI',
-      secondary: c1.secondary as 'CHI',
-      tertiary: (c1.tertiary || tertiary) as 'CHI',
-    };
-    const p2Colors = {
-      primary: c2.primary as 'CHI',
-      secondary: c2.secondary as 'CHI',
-      tertiary: (c2.tertiary || tertiary) as 'CHI',
-    };
-    // Fix types properly via deckFactionValue
-    const mk = (c: { primary: string; secondary: string; tertiary?: string }) => ({
-      primary: deckFactionValue(c.primary, 'P'),
-      secondary: deckFactionValue(c.secondary, 'S'),
-      tertiary: deckFactionValue(c.tertiary || tertiary!, 'T'),
-    });
-    const { matchId, state } = await createPvpMatch(
-      challenge.fromUserId,
-      challenge.toUserId,
-      mk(c1),
-      mk(c2),
-      firstPlayer as 0 | 1,
-    );
-    lobbyAttachMatch(id, matchId);
-    matchOwners.set(matchId, new Set([challenge.fromUserId, challenge.toUserId]));
-    challenge = lobbyGetChallenge(id) || challenge;
-    (res as Response & { locals: Record<string, string> }).locals = { viewerUserId: userId };
-    res.status(201).json({ challenge, match_id: matchId, state, waiting: false });
-  } catch (error) { respondError(res, error); }
-});
-
-apiRouter.get('/lobby/challenges', async (req: Request, res: Response) => {
-  try {
-    const userId = await requireAuth(req);
-    res.json({ challenges: lobbyChallengesFor(userId) });
   } catch (error) { respondError(res, error); }
 });
