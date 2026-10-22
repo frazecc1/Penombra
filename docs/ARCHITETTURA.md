@@ -355,3 +355,23 @@ Piramidi attese in `docs/img/UI/HOME/`:
 - `piramide-endless.webp`
 - `piramide-pvp.webp`
 - `piramide-base.webp`
+
+
+## Profilo: partite in corso (flag leggeri)
+
+Su `player_profiles` (Supabase):
+
+```sql
+ALTER TABLE player_profiles
+  ADD COLUMN IF NOT EXISTS base_match_in_progress boolean DEFAULT false;
+-- future: endless_match_in_progress, story_match_in_progress
+```
+
+Flusso Partita base:
+1. Login → boot asset (messaggi divertenti) → home
+2. Click piramide base → legge solo il flag (+ last_match_id) → popup spoglie **senza** scaricare lo stato
+3. «RIPRENDI le tue spoglie» → overlay caricamento → GET `/match/:id`
+
+Asset attesi:
+- `img/UI/HOME/piramide-{storia,endless,pvp,base}.webp` — **nota:** `piramide-base.webp` ancora da caricare su GitHub
+- `musics/base.mp3` ✓

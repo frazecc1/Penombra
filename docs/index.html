@@ -45,12 +45,13 @@
         transition: width .2s ease;
       }
       .boot-pct { margin: .55rem 0 0; font-size: .85rem; color: #e8c565; font-weight: 700; }
-      html:not(.boot-done) .app-shell { visibility: hidden; }
+      /* app-shell sempre visibile in login; boot solo post-auth */
+      #boot-screen.boot-screen-hidden { display: none !important; }
     </style>
   </head>
   <body>
 
-    <div id="boot-screen" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Caricamento Penombra">
+    <div id="boot-screen" class="boot-screen-hidden" style="display:none" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Caricamento Penombra">
       <div class="boot-panel">
         <p class="boot-title">Penombra</p>
         <p class="boot-status" id="boot-status">Caricamento…</p>
@@ -240,9 +241,9 @@
         </button>
       </div>
     </div>
-    <script type="module" src="js/boot.js?v=1"></script>
-    <script type="module" src="js/game.js?v=29"></script>
+    <script type="module" src="js/boot.js?v=2"></script>
+    <script type="module" src="js/game.js?v=30"></script>
     <script type="module" src="js/trap_preview.js?v=6"></script>
-    <script type="module" src="js/music.js?v=8"></script>
+    <script type="module" src="js/music.js?v=9"></script>
   </body>
 </html>

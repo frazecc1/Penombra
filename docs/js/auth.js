@@ -134,9 +134,17 @@ export function showAuthScreen(options = {}) {
   }).catch(() => showLoginForm());
 }
 
-function showGameScreen(user) {
+async function showGameScreen(user) {
   const username = usernameFromEmail(user?.email);
   authScreen?.classList.add('hidden');
+  // Boot subito dopo Accedi / Sono io (non all’apertura del sito)
+  try {
+    if (typeof window.__penombraRunBoot === 'function') {
+      await window.__penombraRunBoot();
+    }
+  } catch (e) {
+    console.warn('boot', e);
+  }
   gameScreen?.classList.remove('hidden');
   if (signedInUser) {
     signedInUser.textContent = username ? `@${username}` : 'Giocatore';
@@ -187,7 +195,7 @@ async function handleLogin(event) {
     }
     if (passwordInput) passwordInput.value = '';
     setAuthMessage('Accesso eseguito.', 'success');
-    showGameScreen(data.user);
+    await showGameScreen(data.user);
   } catch (error) {
     console.error('Errore inatteso durante il login:', error);
     setAuthMessage('Errore di connessione. Riprova tra poco.', 'error');
@@ -204,7 +212,7 @@ async function handleSonoIo() {
     showLoginForm();
     return;
   }
-  showGameScreen(user);
+  await showGameScreen(user);
 }
 
 async function handleAltroUtente() {

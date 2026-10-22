@@ -17,6 +17,9 @@ Repository del lab **Partita base**: frontend statico (GitHub Pages) + API Node 
 
 ## Changelog lab recente
 
+- **v30** — Boot **dopo** Accedi/Sono io; flag `base_match_in_progress` (spoglie istantanee); caricamento salvataggio solo su RIPRENDI; messaggi a tema mummia.
+
+
 - **v29** — Schermata di **boot obbligatoria** con barra: precache immagini UI + `musics/base.mp3`. Path piramidi: `piramide-storia/endless/pvp/base.webp`.
 
 

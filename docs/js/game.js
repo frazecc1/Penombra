@@ -4,10 +4,20 @@ import { getAccessToken, getCurrentUser, signOut, usernameFromEmail, showAuthScr
 import { API, SHOW_BASE_MATCH_PYRAMID } from './config.js';
 
 const $ = id => document.getElementById(id);
+const FUNNY_BOOT = [
+  'Collegando le bende…',
+  'Rispolverando il regolamento…',
+  'Mettendo in pausa il film «La Mummia»…',
+  'Scuotendo la sabbia dalle scarpe…',
+  'Srotolando le bende del salvataggio…',
+  'Lucidando il sarcofago…',
+];
+function funnyBootLine(i) { return FUNNY_BOOT[i % FUNNY_BOOT.length]; }
+
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v29-boot-loader',
+  version: 'v30-base-flag-boot-after-login',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -763,11 +773,47 @@ async function pullProfileFromServer() {
     } else {
       try { localStorage.removeItem('bellum:last-match'); } catch (_) { /* ignore */ }
     }
+    try {
+      localStorage.setItem('bellum:base-match-in-progress', profile.base_match_in_progress ? '1' : '0');
+    } catch (_) { /* ignore */ }
     return profile;
   } catch (e) {
     console.warn('Profilo server non disponibile', e);
     return null;
   }
+}
+
+
+/** Flag leggero su profilo: partita base in corso (niente fetch dello stato intero). */
+async function setBaseMatchInProgress(on, matchId = null) {
+  try {
+    const body = { base_match_in_progress: !!on };
+    if (on && matchId) body.last_match_id = matchId;
+    if (!on) body.last_match_id = null;
+    await api('/me/profile', { method: 'PUT', body });
+    if (_profileCache) {
+      _profileCache.base_match_in_progress = !!on;
+      if (on && matchId) _profileCache.last_match_id = matchId;
+      if (!on) _profileCache.last_match_id = null;
+    }
+    try {
+      localStorage.setItem('bellum:base-match-in-progress', on ? '1' : '0');
+      if (on && matchId) localStorage.setItem('bellum:last-match', String(matchId));
+      if (!on) localStorage.removeItem('bellum:last-match');
+    } catch (_) { /* ignore */ }
+  } catch (e) {
+    console.warn('setBaseMatchInProgress', e);
+  }
+}
+function isBaseMatchInProgress() {
+  if (_profileCache && typeof _profileCache.base_match_in_progress === 'boolean') {
+    return _profileCache.base_match_in_progress;
+  }
+  try { return localStorage.getItem('bellum:base-match-in-progress') === '1'; } catch (_) { return false; }
+}
+function baseMatchIdHint() {
+  if (_profileCache?.last_match_id) return String(_profileCache.last_match_id);
+  try { return localStorage.getItem('bellum:last-match'); } catch (_) { return null; }
 }
 
 /** Claim device + pull profilo (dopo login / Sono io). */
@@ -1298,6 +1344,7 @@ function queuePresentation(onlyLast = false) {
         if (generation !== presentationGeneration || matchId !== id) break;
 
         if (state.status === 'finished') {
+      if (currentMode === 'base') void setBaseMatchInProgress(false);
           await handleMatchFinished();
           break;
         }
@@ -1316,6 +1363,7 @@ function queuePresentation(onlyLast = false) {
           await render(); await logs();
           await ensurePhaseBanner().catch(fail);
           if (state.status === 'finished') {
+      if (currentMode === 'base') void setBaseMatchInProgress(false);
             await handleMatchFinished();
             break;
           }
@@ -2421,6 +2469,7 @@ async function request(path, body, message) {
     void logs().catch(e => console.warn(e));
 
     if (state.status === 'finished') {
+      if (currentMode === 'base') void setBaseMatchInProgress(false);
       await render();
       didRender = true;
       await handleMatchFinished();
@@ -3253,7 +3302,7 @@ function showStart(opts = {}) {
   if (loading) {
     if (recover) recover.classList.add('hidden');
     if (fresh) { fresh.className = 'secondary-button'; fresh.disabled = true; }
-    if (text) text.textContent = 'Cerco le tue spoglie…';
+    if (text) text.textContent = 'Ispezionando le bende…';
   } else {
     if (fresh) fresh.disabled = false;
     if (recover) recover.classList.toggle('hidden', !has);
@@ -3277,7 +3326,16 @@ function hideStart() {
 }
 async function startScreen() {
   if (state || busy) return;
-  // Se già sondato dopo login → dialog immediato (niente attesa 5–10s)
+  // Partita base: solo flag profilo (veloce). Nessun GET /match finché non clicca RIPRENDI.
+  if (currentMode === 'base') {
+    const on = isBaseMatchInProgress();
+    const id = baseMatchIdHint();
+    priorMatch = on && id ? { id } : null;
+    priorProbed = true;
+    showStart();
+    return;
+  }
+  // Altre modalità: comportamento precedente (probe completo) — da affinare dopo
   if (priorProbed && !probing) {
     showStart();
     return;
@@ -3287,7 +3345,7 @@ async function startScreen() {
     return;
   }
   probing = true;
-  showStart({ loading: true }); // subito, non dopo le API
+  showStart({ loading: true });
   try {
     await probePrior();
   } finally {
@@ -3905,36 +3963,44 @@ function showStoryContinueChoice(isIndrazzicoNext) {
 
 async function recoverPrior() {
   if (!priorMatch || busy) return;
-  const id = priorMatch.id; busy = true; controls();
+  const id = priorMatch.id;
+  busy = true; controls();
   hideStart();
-  hideHome();
-  showMatchLoading('Riprendo le tue spoglie…');
+  let lineI = 0;
+  showMatchLoading(funnyBootLine(0));
+  const lineTimer = setInterval(() => {
+    lineI += 1;
+    showMatchLoading(funnyBootLine(lineI));
+  }, 900);
   try {
     const result = await api(`/match/${encodeURIComponent(id)}`);
-    if (result.state?.state_version !== 4) throw new Error('Partita non più compatibile: avvia una nuova partita.');
+    if (!result?.state || result.state.status === 'finished') {
+      priorMatch = null;
+      await setBaseMatchInProgress(false);
+      throw new Error('Partita non più disponibile');
+    }
     matchId = id; state = result.state; flow = null; priorMatch = null; deathDraft = {choiceId:null,instanceIds:[]};
-    localStorage.setItem('bellum:last-match',matchId); hideStart(); hideHome(); close(); closeGraveyard(); closeColorDialog();
-  } catch(e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    await setBaseMatchInProgress(true, id);
+    try { localStorage.setItem('bellum:last-match', id); } catch (_) { /* ignore */ }
+    await render();
+    notice('Partita precedente ripristinata.', 'success');
+    queuePresentation(true);
+  } catch (e) {
     console.warn('recoverPrior', e);
-    try { localStorage.removeItem('bellum:last-match'); } catch (_) {}
     priorMatch = null;
-    hideMatchLoading();
-    showHome();
+    await setBaseMatchInProgress(false);
     notice(
-      'Non posso riprendere quella partita.\n' +
       'Lo stato non è più disponibile sul server (partita scaduta, già finita, o tabella matches assente).\n' +
       'Avvia una nuova Partita base.',
       'error'
     );
-  }
-  finally {
+    showStart();
+  } finally {
+    clearInterval(lineTimer);
     hideMatchLoading();
-    busy = false; await render().catch(fail);
-    if (state) { try { await logs(); } catch(e) { console.warn(e); } notice('Partita precedente ripristinata.','success'); queuePresentation(true); }
+    busy = false; controls();
   }
 }
-
 function showCurseDialog(humanColors, aiColors) {
   return new Promise(resolve => {
     let el = $('curse-dialog');
@@ -4088,7 +4154,7 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
   if ($('deck-color-validation')) $('deck-color-validation').textContent = '';
   try {
     // Body base +, in Storia: vita boss, Medaglione, terziario stabile, colore del boss IA
-    const createBody = { primaryColor, secondaryColor };
+    const createBody = { primaryColor, secondaryColor, gameMode: currentMode || 'base' };
     if (options.tertiaryColor) createBody.tertiaryColor = options.tertiaryColor;
     /** Boss scelto prima della create (usato dopo per currentBoss e dialoghi). */
     let pendingStoryBoss = null;
@@ -4193,6 +4259,10 @@ async function newMatch(primaryColor, secondaryColor, options = {}) {
       };
     }
     const result = await api('/match/create', { method: 'POST', body: createBody });
+    if (currentMode === 'base' && (result.matchId || result.match_id || result.id)) {
+      const mid = result.matchId || result.match_id || result.id;
+      void setBaseMatchInProgress(true, mid);
+    }
     presentationGeneration++;
     presentationLayer().style.display = 'none';
     matchId = result.match_id;
@@ -4749,8 +4819,7 @@ window.addEventListener('bellum:auth-ready', () => {
   try { showHome(); } catch (_) { /* ignore */ }
   init()
     .then(() => claimDeviceAndSync().catch(() => {}))
-    // Precarica last_match mentre l’utente è sulla home → click piramide istantaneo
-    .then(() => probePrior().catch(() => {}))
+    // Niente probePrior pesante: per la base basta base_match_in_progress dal profilo
     .catch(fail);
 });
 

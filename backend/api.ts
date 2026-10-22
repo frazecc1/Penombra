@@ -297,7 +297,7 @@ apiRouter.get('/me/profile', async (req: Request, res: Response) => {
     }
     const { data, error } = await supabase
       .from('player_profiles')
-      .select('story_progress, last_match_id, active_device_id, active_device_label, session_claimed_at, updated_at')
+      .select('story_progress, last_match_id, base_match_in_progress, active_device_id, active_device_label, session_claimed_at, updated_at')
       .eq('user_id', userId)
       .maybeSingle();
     if (error) {
@@ -313,6 +313,7 @@ apiRouter.get('/me/profile', async (req: Request, res: Response) => {
     res.json({
       story_progress: data?.story_progress ?? null,
       last_match_id: data?.last_match_id ?? null,
+      base_match_in_progress: !!data?.base_match_in_progress,
       active_device_label: data?.active_device_label ?? null,
       session_claimed_at: data?.session_claimed_at ?? null,
       updated_at: data?.updated_at ?? null,
@@ -353,6 +354,9 @@ apiRouter.put('/me/profile', async (req: Request, res: Response) => {
     if ('last_match_id' in body) {
       const v = body.last_match_id;
       patch.last_match_id = v === null || v === '' ? null : requiredString(v, 'ID partita');
+    }
+    if ('base_match_in_progress' in body) {
+      patch.base_match_in_progress = !!body.base_match_in_progress;
     }
     if (!Object.keys(patch).length) throw new Error('Nessun campo da aggiornare');
     await upsertProfile(userId, patch);
@@ -433,7 +437,13 @@ apiRouter.post('/match/create', async (req: Request, res: Response) => {
 
     const { matchId, state } = await createNewMatch(userId, primary, secondary, createOpts);
     // Ultima partita attiva sul profilo → recuperabile da qualsiasi device
-    try { await upsertProfile(userId, { last_match_id: matchId }); } catch (e) { console.warn(e); }
+    try {
+      const gm = typeof body.gameMode === 'string' ? body.gameMode : 'base';
+      await upsertProfile(userId, {
+        last_match_id: matchId,
+        ...(gm === 'base' ? { base_match_in_progress: true } : {}),
+      });
+    } catch (e) { console.warn(e); }
     res.status(201).json({ match_id: matchId, state });
   } catch (error) { respondError(res, error); }
 });
