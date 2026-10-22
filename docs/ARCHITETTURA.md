@@ -329,3 +329,16 @@ Mitigazioni client (v26):
 - cache token Bearer 60s;
 - `claimDeviceAndSync` + **`probePrior` in background** appena dopo «Sono io»;
 - click piramide: se già sondato → dialog **subito**; altrimenti dialog «Cerco le tue spoglie…» senza aspettare la fine delle API.
+
+
+## Asset immagini (repo attuale)
+
+| Uso | Path |
+|-----|------|
+| Login telefono | `docs/img/UI/HOME/login-mummy-phone.webp` |
+| Piramidi home | `docs/img/UI/HOME/piramide1.webp` (2/3: riuso 1 finché non caricate) |
+| Dorso carte | `docs/img/UI/CARTE/dorso.webp` |
+| Avversario Partita base (parla) | `docs/img/png/domanda/domanda.webp` |
+| Placeholder | `docs/img/png/missing/missing.webp` |
+| Favicon | `docs/favicon.ico` |
+| Apple touch | `docs/apple-touch-icon.png` |

@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v26-fast-spoglie',
+  version: 'v28-asset-paths-domanda',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -410,7 +410,7 @@ function wireAutoNotice() {
 }
 let narratorResolver = null;
 function setNarratorImage(src) {
-  const url = src || 'img/mummy/mummy-base.png';
+  const url = src || 'img/png/domanda/domanda.webp';
   for (const id of ['narrator-popup-img', 'narrator-desk-img']) {
     const img = $(id);
     if (!img) continue;
@@ -1259,8 +1259,8 @@ function showOpponentAngryDialog(text) {
     panel.className = 'panel';
     panel.style.cssText = 'width:min(92vw,420px);margin:auto;padding:1.2rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
     const img = document.createElement('img');
-    img.src = 'img/mummy/arrabbiata.png';
-    img.alt = 'Mummia arrabbiata';
+    img.src = 'img/png/domanda/domanda.webp';
+    img.alt = 'nomeavversario';
     img.width = 160;
     img.height = 160;
     img.style.cssText = 'display:block;margin:0 auto .75rem;border-radius:12px;object-fit:cover;filter:drop-shadow(0 0 12px rgba(255,100,80,.35))';
@@ -2704,7 +2704,7 @@ async function showAnimaScene() {
   const med = document.createElement('div');
   med.className = 'narrator-medallion bob';
   med.style.cssText = 'width:150px;height:150px;margin:0 auto .7rem;border-radius:50%;overflow:hidden;border:2px solid #d5a758;';
-  med.innerHTML = `<img class="narrator-img" src="img/mummy/mummy-base.png" alt="nomeavversario" width="150" height="150" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`;
+  med.innerHTML = `<img class="narrator-img" src="img/png/domanda/domanda.webp" alt="nomeavversario" width="150" height="150" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`;
 
   const nameEl = document.createElement('div');
   nameEl.style.cssText = 'font-family:"Lilita One",Georgia,serif;color:#e8c565;font-size:1.15rem;margin-bottom:.35rem;letter-spacing:.03em;';
@@ -3086,9 +3086,9 @@ function homeDialog() {
   }
 
   // Lab Penombra: piramidi 1–3 visibili ma inerti (placeholder future modalità).
-  const storyBtn = makePyramid('home-story', '???', true, null, 'img/piramide1.png');
-  const endlessBtn = makePyramid('home-endless', '???', true, null, 'img/piramide2.png');
-  const pvpBtn = makePyramid('home-pvp', '???', true, null, 'img/piramide3.png');
+  const storyBtn = makePyramid('home-story', '???', true, null, 'img/UI/HOME/piramide1.webp');
+  const endlessBtn = makePyramid('home-endless', '???', true, null, 'img/UI/HOME/piramide1.webp');
+  const pvpBtn = makePyramid('home-pvp', '???', true, null, 'img/UI/HOME/piramide1.webp');
 
   // 4ª piramide: Partita base (lab). In produzione nascondere con SHOW_BASE_MATCH_PYRAMID=false.
   const baseBtn = makePyramid('home-base', 'Partita base', false, () => {
@@ -3654,7 +3654,7 @@ function showEndlessRecordPopup(best) {
     panel.className = 'panel';
     panel.style.cssText = 'width:min(92vw,400px);margin:auto;padding:1.3rem;text-align:center;border:1px solid #d5a758;box-shadow:0 12px 48px #000';
     const img = document.createElement('img');
-    img.src = 'img/Trofei/gg.png';
+    img.src = 'img/png/missing/missing.webp';
     img.alt = 'Trofeo Endless';
     img.width = 120;
     img.height = 120;
@@ -4553,7 +4553,7 @@ async function showAnimaSceneForPvp(challengeId) {
   const med = document.createElement('div');
   med.className = 'narrator-medallion bob';
   med.style.cssText = 'width:140px;height:140px;margin:0 auto .7rem;border-radius:50%;overflow:hidden;border:2px solid #d5a758';
-  med.innerHTML = `<img src="img/mummy/mummy-base.png" alt="" width="140" height="140" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`;
+  med.innerHTML = `<img src="img/png/domanda/domanda.webp" alt="" width="140" height="140" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`;
   const speech = document.createElement('p');
   speech.style.cssText = 'line-height:1.5;font-size:1.08rem;max-width:36ch;margin:0 auto';
   const choices = document.createElement('div');

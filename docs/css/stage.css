@@ -478,7 +478,7 @@ body:has(#stage.calm) .narrator-medallion.bob { animation: none !important; }
 #stage .card-back {
   flex: none; width: var(--back-w); height: calc(var(--back-w) * 1.48);
   border: 2px solid var(--tomb-gold, #c9a043); border-radius: calc(4 * var(--p));
-  background: url('../img/dorso.png') center / cover no-repeat, linear-gradient(135deg, #3a1f12, #8a4a1a);
+  background: url('../img/UI/CARTE/dorso.webp') center / cover no-repeat, linear-gradient(135deg, #3a1f12, #8a4a1a);
   box-shadow: 0 2px 0 var(--tomb-chunky-shadow, #1a0a05);
 }
 #stage .card-back + .card-back {
@@ -2134,7 +2134,7 @@ body.notice-open #stage .action-panel button {
   filter: grayscale(0.4);
 }
 
-/* Immagine piramide (piramide1/2/3.png – formato largo 1408×768) */
+/* Immagine piramide (img/UI/HOME/piramide*.webp) */
 .home-pyramid .pyramid-img {
   display: block;
   width: clamp(160px, 30vw, 280px);
