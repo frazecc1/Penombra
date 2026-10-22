@@ -1,5 +1,5 @@
-// docs/js/game.js — Penombra (lab partita base).
-// Derivato dal client Bellum Penumbrum: login/home/partita base; modalità Storia/Endless/PvP disattivate.
+// docs/js/game.js — Penombra (lab Partita base).
+// Flusso ufficiale: login → home → Partita base → fine partita.
 import { getAccessToken, getCurrentUser, signOut, usernameFromEmail, showAuthScreen } from './auth.js';
 import { API, SHOW_BASE_MATCH_PYRAMID } from './config.js';
 
@@ -17,7 +17,7 @@ function funnyBootLine(i) { return FUNNY_BOOT[i % FUNNY_BOOT.length]; }
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'versioneB_4-peek-hud',
+  version: 'versioneB_5-polish',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -2639,8 +2639,8 @@ const FACTION_EYE = {
   BUL: '#c4684f', GRO: '#5aa87c', CLO: '#e0a22a', IND: '#8a96a3',
 };
 
-/** Overlay narrativo Mummy per scelta colori (anima / artefatto / maledizione).
- *  Home resta sullo sfondo (3 piramidi); Mummy in primo piano. */
+/** Overlay narrativo (nomeavversario) per scelta colori: anima / artefatto / maledizione.
+ *  Home resta sullo sfondo (3 piramidi). */
 function closeColorDialog() {
   const anima = $('anima-scene');
   if (anima) {
@@ -2686,7 +2686,7 @@ function renderColorButtons(codes, onPick) {
   return wrap;
 }
 
-/** Scena a step: A anima → B artefatto → goodbye Mummy → occhi maledizione → newMatch. */
+/** Scena a step: A anima → B artefatto → saluto → occhi maledizione → newMatch. */
 async function showAnimaScene() {
   if (busy || reaction() || pending() || obligatory()) return;
   close(); closeGraveyard();
@@ -2749,7 +2749,7 @@ async function showAnimaScene() {
     choices.append(renderColorButtons(remaining, code => resolve(code)));
   });
 
-  // —— Goodbye Mummy ——
+  // —— Saluto avversario ——
   let uname = 'coraggioso';
   try {
     const u = await getCurrentUser();

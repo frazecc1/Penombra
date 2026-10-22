@@ -1,3 +1,11 @@
+## Note versioneB_5 (rifinitura residuale)
+
+* Commenti client/backend allineati a Penombra (niente più «Bellum» nel header di `game.js`).
+* Rimosso badge HTML `#story-progress-badge` (sempre nascosto).
+* Backend: `publicState` e `endHumanTurn` solo percorso PvE lab (rimossi rami `match_mode === 'pvp'`).
+* Commenti motore su opzioni legacy Storia attenuati; logica inerte `story_modifiers` resta harmless.
+* Cache: `game.js?v=B5`, `stage.css?v=B5`.
+
 ## Note versioneB_4 (peek campo di battaglia)
 
 * Chip «Torna al messaggio» spostato **in alto** (non copre più nome giocatore / Fine turno / mano).

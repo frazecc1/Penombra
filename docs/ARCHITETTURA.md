@@ -411,3 +411,11 @@ Backend: `lobby.ts` e route `/lobby/*` ancora nel repo (da rimuovere in fase bac
 - `body.battlefield-peek` → tap su celle / mano / Fine turno operativi anche su touch
 
 Chiudere il peek: «Torna al messaggio» (o chiudere il dialogo se previsto).
+
+
+---
+
+## Note versioneB_5 (polish)
+
+Lab allineato end-to-end: client solo Partita base, backend senza lobby/PvP create, peek HUD operativo.
+Residui intenzionali: asset tema mummia (`login-mummy-phone.webp`), piramidi placeholder Storia/Endless/PvP in Home, campo DB `story_progress` non usato dal client.

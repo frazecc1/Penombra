@@ -238,29 +238,17 @@ function hiddenCards(list: unknown, prefix: string): CardInstance[] {
   const length = Array.isArray(list) ? list.length : 0;
   return Array.from({ length }, (_, i) => ({ instance_id: `${prefix}-${i}`, card_id: '' }));
 }
-function publicState(state: GameState, viewerUserId?: string): GameState {
+/** Vista client: nasconde mano/mazzo IA (lab PvE: umano = index 1). */
+function publicState(state: GameState, _viewerUserId?: string): GameState {
   const copy = structuredClone(state);
-  const isPvp = (state as GameState & { match_mode?: string }).match_mode === 'pvp';
-  if (isPvp && viewerUserId) {
-    for (const idx of [0, 1] as const) {
-      const pl = copy.players[idx];
-      const isMe = pl.user_id === viewerUserId;
-      if (!isMe) {
-        pl.hand = hiddenCards(pl.hand, `p${idx}-hand`);
-      }
-      pl.deck = hiddenCards(pl.deck, `p${idx}-deck`);
-      pl.extra_deck = hiddenCards(pl.extra_deck, `p${idx}-extra`);
-    }
-  } else {
-    const [ai, human] = copy.players;
-    ai.hand = hiddenCards(ai.hand, 'ai-hand');
-    ai.deck = hiddenCards(ai.deck, 'ai-deck');
-    ai.extra_deck = hiddenCards(ai.extra_deck, 'ai-extra');
-    human.deck = hiddenCards(human.deck, 'human-deck');
-    human.extra_deck = hiddenCards(human.extra_deck, 'human-extra');
-    if (copy.pending_reaction && copy.pending_reaction.responder_index === 0)
-      copy.pending_reaction = { ...copy.pending_reaction, eligible_instance_ids: [] };
-  }
+  const [ai, human] = copy.players;
+  ai.hand = hiddenCards(ai.hand, 'ai-hand');
+  ai.deck = hiddenCards(ai.deck, 'ai-deck');
+  ai.extra_deck = hiddenCards(ai.extra_deck, 'ai-extra');
+  human.deck = hiddenCards(human.deck, 'human-deck');
+  human.extra_deck = hiddenCards(human.extra_deck, 'human-extra');
+  if (copy.pending_reaction && copy.pending_reaction.responder_index === 0)
+    copy.pending_reaction = { ...copy.pending_reaction, eligible_instance_ids: [] };
   copy.remaining_mostrissimi = copy.remaining_mostrissimi.map(() => '');
   return copy;
 }

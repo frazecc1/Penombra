@@ -962,7 +962,7 @@ function startTurn(c: Context, p: PlayerIndex) {
     const before = s.players[0].life;
     s.players[0].life = Math.min(before, newLife);
     sm.ai_life_cut_applied = true;
-    log(c, 0, 'story_life_cut', `La Mummia interviene: vita del boss ${before} → ${s.players[0].life}.`);
+    log(c, 0, 'story_life_cut', `Intervento narrativo: vita IA ${before} → ${s.players[0].life}.`);
   }
   prepend(s, { kind: 'declare_event', event: { kind: 'upkeep_start', actor: p } });
 }
@@ -1150,7 +1150,7 @@ export async function createNewMatch(
   const [pool, catalogue] = await Promise.all([deckPool(), offer()]);
   const available = availableFactions(pool), bosses = bossFactions(pool);
 
-  // Colori umani: se Storia passa tertiaryColor, usalo (stabile tra le lotte); altrimenti a caso.
+  // Colori umani: tertiaryColor forzato se passato (scena anima); altrimenti a caso.
   let humanColors: { primary: DeckFaction; secondary: DeckFaction; tertiary: DeckFaction };
   const forcedTertiary = options.tertiaryColor;
   if (
@@ -1167,10 +1167,7 @@ export async function createNewMatch(
     humanColors = chosenColors(primary, secondary, available, bosses);
   }
 
-  // Colore primario IA:
-  // - Storia con boss normale → options.aiPrimary (deve avere carte + boss 6 mana)
-  // - Storia Indrazzico ('IND') → prova IND; se non ci sono carte, fallback maledizione
-  // - Modalità normale / Endless → maledizione (tertiary umano), come prima
+  // Colore primario IA (lab): tertiary umano, salvo options.aiPrimary legacy
   let aiPrimary: DeckFaction;
   const requested = options.aiPrimary;
   if (requested === 'IND') {
@@ -1204,7 +1201,7 @@ export async function createNewMatch(
   const matchId = randomUUID();
   const ai = player(0, null, aiCards), human = player(1, userId, humanCards);
 
-  // Modalità Storia: vita boss e Medaglioni (umano + boss IA)
+  // Opzioni legacy (non esposte dall'API lab): vita IA / medaglioni
   const aiLife = Number.isFinite(options.aiStartingLife) && options.aiStartingLife! > 0
     ? Math.min(200, Math.max(1, Math.floor(options.aiStartingLife!)))
     : 20;
@@ -1467,12 +1464,7 @@ export async function endHumanTurn(id: string, p: PlayerIndex = 1): Promise<Game
     const s = c.s; assertTurn(s, p);
     expireTemporaryBuffs(s); s.phase = 'end'; log(c, p, 'turn_end', 'Termini il turno.');
     prepend(s, { kind: 'declare_event', event: { kind: 'turn_end', actor: p } });
-    const isPvp = !!(s as GameState & { match_mode?: string }).match_mode && (s as GameState & { match_mode?: string }).match_mode === 'pvp';
-    if (isPvp) {
-      const next = (p === 0 ? 1 : 0) as PlayerIndex;
-      startTurn(c, next);
-      return;
-    }
+    // Lab PvE: dopo il turno umano avanza sempre l'IA
     s.ai_progress = { stage: 'upkeep', actions_taken: 0 };
     prepend(s, { kind: 'advance_ai' });
   });
