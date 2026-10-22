@@ -1,3 +1,12 @@
+## Note versioneB_2 (pulizia fase 2 — client)
+
+* Rimosso dal client tutto il codice **Storia / Endless / lobby PvP** (`game.js`).
+* `newMatch` solo percorso Partita base (create → maledizione → moneta → camera → partita).
+* Home invariata: 3 piramidi «alieni» + Partita base.
+* Medaglioni HUD: sempre placeholder «medaglione lasciato a casa per sbaglio».
+* `game.js` da ~4930 a ~3400 righe.
+* Backend lobby/story **ancora presenti** (prossimo: versioneB_3).
+
 ## Note versioneB_1 (pulizia fase 1)
 
 * Rimosso `docs/js/trap_preview.js` (trappole solo via dettaglio grande in `game.js`).
