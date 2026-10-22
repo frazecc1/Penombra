@@ -17,7 +17,7 @@ function funnyBootLine(i) { return FUNNY_BOOT[i % FUNNY_BOOT.length]; }
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'v33-fix-showMatchLoading',
+  version: 'v34-fix-cardHTML-split',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -607,7 +607,7 @@ function cardHTML(d, mini = false, cell = null) {
   const fxShort = effectPreview(d, mini ? 90 : 160);
   const rulesFull = escape(d.effect_text || '')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .split('
+    .split(String.fromCharCode(10)).join('<br>');
   if (mini) {
     return `<article class="board-card fan-like ${cls}${isCreature ? '' : ' no-stats'}">
       <div class="fc-nameband"><span class="fc-name">${escape(d.name)}</span></div>
