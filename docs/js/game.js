@@ -1,23 +1,23 @@
-// docs/js/game.js — Penombra (lab Partita base).
-// Flusso ufficiale: login → home → Partita base → fine partita.
+// docs/js/game.js — Penombra (lab Partita base). Entry principale.
+// Moduli: ./game/storage.js, ./game/constants.js, ./game/peek.js
+// Flusso: login → home → Partita base → fine partita.
 import { getAccessToken, getCurrentUser, signOut, usernameFromEmail, showAuthScreen } from './auth.js';
 import { API, SHOW_BASE_MATCH_PYRAMID } from './config.js';
+import { lsGet, lsSet, lsRemove } from './game/storage.js';
+import {
+  FUNNY_BOOT, funnyBootLine, factions, deckFactionNames, types, rarities,
+  STAGE_W, STAGE_H, STAGE_MIN_ASPECT, STAGE_FRAME_MIN_W, HAND_AREA, HAND_MIN_VISIBLE,
+  OPPONENT_NAME, OPPONENT_IMG, AI_TARGET, TOKEN_TTL_MS, CARD_TTL,
+} from './game/constants.js';
+import {
+  clearBattlefieldPeek, enterBattlefieldPeek, ensurePeekOnBar, appendBattlefieldPeekButton,
+} from './game/peek.js';
 
 const $ = id => document.getElementById(id);
-const FUNNY_BOOT = [
-  'Collegando le bende…',
-  'Rispolverando il regolamento…',
-  'Mettendo in pausa il film «La Mummia»…',
-  'Scuotendo la sabbia dalle scarpe…',
-  'Srotolando le bende del salvataggio…',
-  'Lucidando il sarcofago…',
-];
-function funnyBootLine(i) { return FUNNY_BOOT[i % FUNNY_BOOT.length]; }
-
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'versioneB_6-dead-code',
+  version: 'versioneB_7-modules',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -30,31 +30,6 @@ window.__penombraDebug = {
 };
 const cache = new Map();
 
-/** localStorage con prefisso penombra:; legge anche la vecchia chiave bellum: (migrazione una tantum). */
-function lsGet(key) {
-  try {
-    const v = localStorage.getItem(key);
-    if (v != null) return v;
-    if (key.startsWith('penombra:')) {
-      const legacy = 'bellum:' + key.slice('penombra:'.length);
-      const old = localStorage.getItem(legacy);
-      if (old != null) {
-        try { localStorage.setItem(key, old); localStorage.removeItem(legacy); } catch (_) {}
-        return old;
-      }
-    }
-  } catch (_) {}
-  return null;
-}
-function lsSet(key, value) {
-  try { localStorage.setItem(key, value); } catch (_) {}
-}
-function lsRemove(key) {
-  try {
-    localStorage.removeItem(key);
-    if (key.startsWith('penombra:')) localStorage.removeItem('bellum:' + key.slice('penombra:'.length));
-  } catch (_) {}
-}
 
 let state = null, matchId = null, busy = false, initialized = false, view = null, flow = null;
 /** Cella scelta per l’ingresso del Mostrissimo (fase 2), in attesa di conferma. */
@@ -110,15 +85,10 @@ const creature = d => ['monster','mostrissimo'].includes(d.card_type);
 const effects = d => Array.isArray(d?.effect_json?.effects) ? d.effect_json.effects : d?.effect_json?.type ? [d.effect_json] : [];
 const targetEffect = d => effects(d).find(e => !e?.trigger && (e?.target === 'any_creature' || e?.target === 'any_target' || e?.type === 'return_hand'));
 // Danno a scelta: il giocatore avversario (IA, indice 0) si sceglie toccando i suoi PV. Id fittizio player:0.
-const AI_TARGET = 'player:0';
 const playerTargetEffect = d => ['aura','terraforma'].includes(d?.card_type) ? undefined : effects(d).find(e => !e?.trigger && e?.target === 'any_target' && ['damage','damage_creature'].includes(e.type));
 const hasTargets = d => !!playerTargetEffect(d) || targets(d).length > 0;
 // Si attaccano creature nemiche e Terraforme nemiche con PV; solo le creature bloccano l'attacco diretto.
 const attackable = p => around(p).filter(q => { const c = at(q); return c && isFoe(c.owner_index) && (isCreatureCell(c) || (c.kind === 'terraforma' && c.hp !== undefined)); });
-const factions = ['','CHI','INF','PES','BUL','GRO','CLO','IND'];
-const deckFactionNames = {CHI:'Chiericanza',INF:'Infamia',PES:'Pestilenza',BUL:'Bullismo',GRO:'Grossanza',CLO:'Clownerie'};
-const types = {monster:'MOSTRO',mostrissimo:'MOSTRISSIMO',maledizione:'MALEDIZIONE',instant:'TRAPPOLA',terraforma:'TERRAFORMA',aura:'AURA'};
-const rarities = {common:'Comune',uncommon:'Non comune',rare:'Rara',ultra_rare:'Ultra rara',legendary:'Leggendaria'};
 const faction = d => {
   const code = String(d?.faction_code ?? factions[Number(d?.faction_id)] ?? 'IND').toLowerCase();
   return ['chi','inf','pes','bul','gro','clo','ind'].includes(code) ? code : 'ind';
@@ -127,68 +97,11 @@ const faction = d => {
 const stageRoot = () => $('stage') ?? document.body; // tutti i dialoghi vivono dentro la colonna centrale
 
 /** Partita base: avversario sempre anonimo */
-const OPPONENT_NAME = 'nomeavversario';
-const OPPONENT_IMG = 'img/png/domanda/domanda.webp';
 function opponentImageHtml(size = 140) {
   const s = Number(size) || 140;
   return `<img src="${OPPONENT_IMG}" alt="${OPPONENT_NAME}" width="${s}" height="${s}" style="width:${s}px;height:${s}px;max-width:40vw;object-fit:cover;border-radius:10px;border:2px solid #c9a043" onerror="this.style.display='none'">`;
 }
 
-function clearBattlefieldPeek() {
-  const chip = document.getElementById('game-dialog-restore');
-  if (chip) chip.remove();
-  document.querySelectorAll('.is-peeking').forEach((el) => el.classList.remove('is-peeking'));
-  try { document.body.classList.remove('battlefield-peek'); } catch (_) {}
-}
-
-/** Nasconde temporaneamente un overlay a schermo intero per vedere (e toccare) la plancia. */
-function enterBattlefieldPeek(overlayEl) {
-  if (!overlayEl) return;
-  // Non chiamare clearBattlefieldPeek(): se c’era già un peek sotto (es. Ho capito),
-  // resta nascosto; togliamo solo il chip vecchio.
-  const oldChip = document.getElementById('game-dialog-restore');
-  if (oldChip) oldChip.remove();
-  overlayEl.classList.add('is-peeking');
-  try { document.body.classList.add('battlefield-peek'); } catch (_) {}
-  const chip = document.createElement('button');
-  chip.id = 'game-dialog-restore';
-  chip.type = 'button';
-  chip.className = 'primary-button game-dialog-restore-chip';
-  chip.textContent = 'Torna al messaggio';
-  chip.addEventListener('click', (e) => {
-    e.stopPropagation();
-    // Esci dal peek di questo overlay; se ne restano altri is-peeking, tieni la modalità campo
-    overlayEl.classList.remove('is-peeking');
-    const still = document.querySelector('.is-peeking');
-    const c = document.getElementById('game-dialog-restore');
-    if (c) c.remove();
-    if (!still) {
-      try { document.body.classList.remove('battlefield-peek'); } catch (_) {}
-    } else {
-      // Ricrea chip per l’overlay ancora in peek
-      enterBattlefieldPeek(still);
-    }
-  });
-  document.body.appendChild(chip);
-}
-
-function ensurePeekOnBar(actionsEl, overlayEl) {
-  if (!actionsEl || !overlayEl) return;
-  if (actionsEl.querySelector('[data-peek-btn]')) return;
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.setAttribute('data-peek-btn', '1');
-  btn.className = 'secondary-button';
-  btn.textContent = 'Guarda campo di battaglia';
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    enterBattlefieldPeek(overlayEl);
-  });
-  actionsEl.appendChild(btn);
-}
-function appendBattlefieldPeekButton(actionsEl, overlayEl) {
-  ensurePeekOnBar(actionsEl, overlayEl);
-}
 
 
 
@@ -294,7 +207,6 @@ function handCardHTML(d) {
   </article>`;
 }
 // Geometria del ventaglio, in "px di riferimento" della colonna 455x768 (vedi css/stage.css).
-const HAND_AREA = 403, HAND_MIN_VISIBLE = 34;
 function handGeometry(n) {
   const w = Math.max(56, Math.min(88, n > 1 ? HAND_AREA - HAND_MIN_VISIBLE * (n - 1) : 88));
   const step = n > 1 ? Math.min(w + 6, (HAND_AREA - w) / (n - 1)) : 0;
@@ -305,9 +217,7 @@ function handGeometry(n) {
 // Misura la finestra reale e imposta la scala della colonna centrale.
 // Riferimento 455x768. Finestra "larga" (PC): colonna di 455x768 scalata e centrata. Finestra "stretta" (telefono
 // in verticale): la colonna occupa tutta l'area visibile e l'altezza è flessibile.
-const STAGE_W = 455, STAGE_H = 768, STAGE_MIN_ASPECT = 0.44;
 /** Soglia desktop: colonne laterali + colonna centrale fissa al centro. */
-const STAGE_FRAME_MIN_W = 1100;
 let _fitKey = '';
 function fitStage() {
   const stage = $('stage'); if (!stage) return;
@@ -823,7 +733,6 @@ function getDeviceLabel() {
 
 /** Cache token: evita getSession() su ogni fetch (lento su cold start). */
 let _tokenCache = { token: null, at: 0 };
-const TOKEN_TTL_MS = 60_000;
 async function getAccessTokenCached(force = false) {
   if (!force && _tokenCache.token && Date.now() - _tokenCache.at < TOKEN_TTL_MS) {
     return _tokenCache.token;
@@ -934,7 +843,7 @@ async function claimDeviceAndSync() {
 }
 // Le carte scadono dopo 5 minuti e a ogni nuova partita: una modifica dall'editor arriva ai giocatori
 // senza ricaricare la pagina. Se il ricaricamento fallisce si usa la copia già in memoria.
-const cardLoaded = new Map(), CARD_TTL = 5 * 60 * 1000;
+const cardLoaded = new Map();
 async function card(id) {
   const fresh = cache.has(id) && Date.now() - (cardLoaded.get(id) ?? 0) < CARD_TTL;
   if (!fresh) {

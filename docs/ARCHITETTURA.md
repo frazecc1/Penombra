@@ -436,3 +436,20 @@ IA: primario = tertiary umano; vita 20; `story_modifiers` null
 
 ### Profilo
 API non espone più `story_progress` (colonna DB eventualmente residuale, non usata)
+
+
+---
+
+## Note versioneB_7 (moduli client)
+
+```
+docs/js/game.js          ← entry (logica partita, render, home)
+docs/js/game/storage.js  ← lsGet / lsSet / lsRemove
+docs/js/game/constants.js
+docs/js/game/peek.js
+docs/js/auth.js
+docs/js/config.js
+docs/js/music.js
+```
+
+Split completo del monolite (board / net / shell) rimandato: alto accoppiamento su `state` / `matchId` / `busy`.

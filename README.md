@@ -1,3 +1,13 @@
+## Note versioneB_7 (split moduli — prima tranche)
+
+* `game.js` resta entry; estratti moduli ES:
+  - `docs/js/game/storage.js` — localStorage penombra:
+  - `docs/js/game/constants.js` — fazioni, stage, boot lines
+  - `docs/js/game/peek.js` — Guarda campo di battaglia
+* Comportamento invariato (solo organizzazione codice).
+* Cache: `game.js?v=B7` (i moduli sono importati da game.js, stessa sessione browser).
+* Prossime tranche possibili: `net` (api/card/profile), `board` (draw/inspect/click), `shell` (home/anima/newMatch) — richiedono stato condiviso più strutturato.
+
 ## Note versioneB_6 (sezione A + D parziale)
 
 * FE: rimossi CSS morti (`.pvp-lobby*`, `.story-progress-badge`, `.story-medallion-banner`, `.home-trophy*`).
