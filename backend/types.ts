@@ -10,7 +10,7 @@ export type DeckColors = {
   tertiary: DeckFaction;
 };
 
-/** Modificatori Modalità Storia (vita boss + Medaglioni). */
+/** Legacy (partite vecchie / non usato dal lab). Create match imposta null. */
 export type StoryModifiers = {
   /** Vita iniziale dell’IA/boss (20 / 25 / 30; Indrazzico ridotto a 20). */
   ai_starting_life: number;
@@ -299,7 +299,7 @@ export type GameState = {
   public_announcements?: PublicAnnouncement[];
   last_mostrissimo_turn: Partial<Record<PlayerIndex, number>>;
   mostrissimo_result: MostrissimoResult | null;
-  /** Presente solo nelle partite di Modalità Storia. */
+  /** Legacy; lab crea sempre null. */
   story_modifiers?: StoryModifiers | null;
 };
 

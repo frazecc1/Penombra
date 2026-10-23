@@ -2186,72 +2186,8 @@ body.notice-open #stage .action-panel button {
 }
 
 /* Trofeo Abitante della Piramide nella Home */
-.home-trophy {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 1.2rem;
-  padding: 0.6rem 1rem;
-  border: 2px solid #c9a043;
-  border-radius: 12px;
-  background: linear-gradient(145deg, #2a2218, #17110b);
-  box-shadow: 0 0 20px #e8c56544;
-}
-.home-trophy.hidden {
-  display: none !important;
-}
-.home-trophy img {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 8px #e8c56566);
-}
-.home-trophy span {
-  font-family: 'Lilita One', Georgia, serif;
-  font-size: 0.95rem;
-  color: #e8c565;
-  letter-spacing: 0.02em;
-}
-
 /* Vecchio banner flottante: nascosto di default (compatibilità) */
-.story-medallion-banner { display: none !important; }
-
 /* Contatore Storia: sotto il nome Mummy, nel HUD in alto */
-#stage .story-progress-badge,
-.story-progress-badge {
-  position: static;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0.12rem 0.55rem;
-  border: 1.5px solid #c9a043;
-  border-radius: 999px;
-  background: #1a140ef0;
-  color: #e8c565;
-  font-family: 'Nunito', system-ui, sans-serif;
-  font-weight: 800;
-  font-size: 0.68rem;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  box-shadow: 0 2px 8px #0006;
-  min-height: 22px;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-#stage .story-progress-badge:hover,
-#stage .story-progress-badge:focus-visible,
-.story-progress-badge:hover,
-.story-progress-badge:focus-visible {
-  background: #2a1c10f5;
-  outline: none;
-}
-#stage .story-progress-badge.hidden,
-.story-progress-badge.hidden {
-  display: none !important;
-}
-
 /* Chip Medaglione sotto i nomi (giocatore e boss) */
 #stage .hud-medallion,
 .hud-medallion {
@@ -2545,74 +2481,7 @@ body.notice-open #stage .action-panel button {
   gap: 0.85rem;
   margin-top: 0.75rem;
 }
-.home-trophy {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  font-family: 'Nunito', system-ui, sans-serif;
-  font-weight: 800;
-  font-size: 0.8rem;
-  color: #e8c565;
-  text-shadow: 0 1px 6px #000a;
-}
-.home-trophy img {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(232, 197, 101, 0.35));
-}
-.home-trophy-endless span {
-  letter-spacing: 0.03em;
-}
-
-
 /* PvP Lobby — Camera del Re Lobbi II */
-.pvp-lobby {
-  position: fixed;
-  inset: 0;
-  z-index: 270;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(8, 6, 4, 0.82);
-  padding: 1rem;
-}
-.pvp-lobby.hidden { display: none !important; }
-.pvp-lobby-panel {
-  width: min(94vw, 440px);
-  max-height: 90dvh;
-  overflow: auto;
-  padding: 1.25rem;
-  text-align: center;
-  border: 2px solid #d5a758;
-}
-.pvp-lobby-panel h2 {
-  margin: 0 0 0.35rem;
-  font-family: 'Lilita One', Georgia, serif;
-  color: #e8c565;
-}
-.pvp-lobby-sub { margin: 0 0 1rem; opacity: 0.85; }
-.pvp-lobby-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  margin-bottom: 1rem;
-  text-align: left;
-}
-.pvp-lobby-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid #8a5a14;
-  border-radius: 10px;
-  background: #1a1410;
-}
-.pvp-lobby-status { font-size: 0.85rem; margin-bottom: 0.75rem; }
-
-
 /* Penombra lab: 4ª piramide Partita base */
 .home-pyramids {
   flex-wrap: wrap;
@@ -2955,16 +2824,6 @@ body.notice-open #stage .action-panel button {
   max-height: calc(14 * var(--p)) !important;
   overflow: hidden !important;
   gap: calc(3 * var(--p)) !important;
-}
-#stage .story-progress-badge:not(.hidden) {
-  position: absolute !important;
-  /* non contribuisce all'altezza della barra */
-  font-size: calc(10 * var(--p)) !important;
-  line-height: 1.1 !important;
-  max-width: 40% !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
 }
 #stage .hud-center {
   position: relative !important;

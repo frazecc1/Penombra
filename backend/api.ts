@@ -275,18 +275,18 @@ apiRouter.get('/me/profile', async (req: Request, res: Response) => {
   try {
     const userId = await requireAuth(req);
     if (!supabase) {
-      res.json({ story_progress: null, last_match_id: null, active_device_label: null, session_claimed_at: null, updated_at: null, lab: true });
+      res.json({ last_match_id: null, active_device_label: null, session_claimed_at: null, updated_at: null, lab: true });
       return;
     }
     const { data, error } = await supabase
       .from('player_profiles')
-      .select('story_progress, last_match_id, base_match_in_progress, active_device_id, active_device_label, session_claimed_at, updated_at')
+      .select('last_match_id, base_match_in_progress, active_device_id, active_device_label, session_claimed_at, updated_at')
       .eq('user_id', userId)
       .maybeSingle();
     if (error) {
       if (isMissingProfileTable(error.message)) {
         res.json({
-          story_progress: null, last_match_id: null, active_device_label: null,
+          last_match_id: null, active_device_label: null,
           session_claimed_at: null, updated_at: null, lab: true,
         });
         return;
@@ -294,7 +294,6 @@ apiRouter.get('/me/profile', async (req: Request, res: Response) => {
       throw new Error(`Lettura profilo: ${error.message}`);
     }
     res.json({
-      story_progress: data?.story_progress ?? null,
       last_match_id: data?.last_match_id ?? null,
       base_match_in_progress: !!data?.base_match_in_progress,
       active_device_label: data?.active_device_label ?? null,
@@ -333,7 +332,6 @@ apiRouter.put('/me/profile', async (req: Request, res: Response) => {
     const userId = await requireAuth(req);
     const body = objectValue(req.body);
     const patch: Record<string, unknown> = {};
-    if ('story_progress' in body) patch.story_progress = body.story_progress ?? null;
     if ('last_match_id' in body) {
       const v = body.last_match_id;
       patch.last_match_id = v === null || v === '' ? null : requiredString(v, 'ID partita');

@@ -37,31 +37,18 @@ function log(c: Context, owner: number, action: string, description: string, ext
 }
 
 /** Opzioni Modalità Storia alla creazione partita. */
+/** Opzioni create match lab (Partita base). */
 export type CreateMatchOptions = {
-  aiStartingLife?: number;
-  humanMedallion?: DeckFaction | null;
-  /** Medaglione del boss (IA), dalla 3ª lotta. */
-  aiMedallion?: DeckFaction | null;
-  /** Terziario del giocatore (maledizione). Se omesso viene scelto a caso. */
+  /** Terziario del giocatore (maledizione / scena anima). Se omesso viene scelto a caso. */
   tertiaryColor?: DeckFaction | null;
-  /**
-   * Colore primario forzato per l’IA (boss della Storia).
-   * 'IND' = Indrazzico: se non esistono carte IND nel catalogo, fallback sulla maledizione del giocatore.
-   */
-  aiPrimary?: DeckFaction | 'IND' | null;
-  /** Nome del boss da mostrare nei log al posto di “L’IA”. */
-  aiDisplayName?: string | null;
   /** Chi inizia: 1 = umano, 0 = IA. Se omesso → moneta a caso. */
   firstPlayer?: PlayerIndex | null;
-  /** Storia 4ª fight: al manatenimento del turno N taglia la vita IA. */
-  aiLifeCutTurn?: number | null;
-  aiLifeAfterCut?: number | null;
 };
 
-/** Nome giocatore nei log (in Storia usa il nome del boss). */
+/** Nome giocatore nei log. */
 function who(s: GameState, p: PlayerIndex): string {
   if (p === 1) return 'Tu';
-  return s.story_modifiers?.ai_display_name || label(p);
+  return label(p);
 }
 
 function humanMedallion(s: GameState): DeckFaction | null {
@@ -946,24 +933,6 @@ function startTurn(c: Context, p: PlayerIndex) {
   // Ogni inizio turno (umano o IA) avanza il contatore globale: mana max = current_turn.
   s.current_turn++;
   // Storia 4ª fight: al manatenimento del 3° turno la Mummia taglia gli HP del boss.
-  const sm = s.story_modifiers as (typeof s.story_modifiers & {
-    ai_life_cut_turn?: number | null;
-    ai_life_after_cut?: number | null;
-    ai_life_cut_applied?: boolean;
-  }) | null | undefined;
-  if (
-    sm &&
-    !sm.ai_life_cut_applied &&
-    sm.ai_life_cut_turn != null &&
-    s.current_turn === sm.ai_life_cut_turn
-  ) {
-    const after = Number(sm.ai_life_after_cut);
-    const newLife = Number.isFinite(after) && after > 0 ? Math.floor(after) : 20;
-    const before = s.players[0].life;
-    s.players[0].life = Math.min(before, newLife);
-    sm.ai_life_cut_applied = true;
-    log(c, 0, 'story_life_cut', `Intervento narrativo: vita IA ${before} → ${s.players[0].life}.`);
-  }
   prepend(s, { kind: 'declare_event', event: { kind: 'upkeep_start', actor: p } });
 }
 // Bersaglio legale ≠ mossa conveniente: cure e bonus vanno solo su creature dell'IA, danni e
@@ -1167,26 +1136,8 @@ export async function createNewMatch(
     humanColors = chosenColors(primary, secondary, available, bosses);
   }
 
-  // Colore primario IA (lab): tertiary umano, salvo options.aiPrimary legacy
-  let aiPrimary: DeckFaction;
-  const requested = options.aiPrimary;
-  if (requested === 'IND') {
-    // Pronto per future carte IND; oggi non esistono → fallback
-    if (available.includes('IND' as DeckFaction) && bosses.includes('IND' as DeckFaction)) {
-      aiPrimary = 'IND' as DeckFaction;
-    } else {
-      aiPrimary = humanColors.tertiary;
-    }
-  } else if (
-    requested &&
-    (['CHI', 'INF', 'PES', 'BUL', 'GRO', 'CLO'] as string[]).includes(requested) &&
-    available.includes(requested as DeckFaction) &&
-    bosses.includes(requested as DeckFaction)
-  ) {
-    aiPrimary = requested as DeckFaction;
-  } else {
-    aiPrimary = humanColors.tertiary;
-  }
+  // Colore primario IA (lab): maledizione = tertiary umano
+  const aiPrimary: DeckFaction = humanColors.tertiary;
   if (!bosses.includes(aiPrimary)) {
     throw new Error(`La fazione IA ${aiPrimary} non ha un boss da 6 mana: scegli altri colori`);
   }
@@ -1201,34 +1152,9 @@ export async function createNewMatch(
   const matchId = randomUUID();
   const ai = player(0, null, aiCards), human = player(1, userId, humanCards);
 
-  // Opzioni legacy (non esposte dall'API lab): vita IA / medaglioni
-  const aiLife = Number.isFinite(options.aiStartingLife) && options.aiStartingLife! > 0
-    ? Math.min(200, Math.max(1, Math.floor(options.aiStartingLife!)))
-    : 20;
-  ai.life = aiLife;
-  const medallion = options.humanMedallion && ['CHI','INF','PES','BUL','GRO','CLO'].includes(options.humanMedallion)
-    ? options.humanMedallion
-    : null;
-  const bossMedallion = options.aiMedallion && ['CHI','INF','PES','BUL','GRO','CLO'].includes(options.aiMedallion)
-    ? options.aiMedallion
-    : null;
-  const aiDisplayName = options.aiDisplayName?.trim() || null;
-  const storyModifiers: (StoryModifiers & {
-    ai_life_cut_turn?: number | null;
-    ai_life_after_cut?: number | null;
-    ai_life_cut_applied?: boolean;
-  }) | null =
-    (options.aiStartingLife != null || medallion || bossMedallion || aiDisplayName || options.aiLifeCutTurn != null)
-      ? {
-          ai_starting_life: aiLife,
-          human_medallion: medallion,
-          ai_medallion: bossMedallion,
-          ai_display_name: aiDisplayName,
-          ai_life_cut_turn: options.aiLifeCutTurn ?? null,
-          ai_life_after_cut: options.aiLifeAfterCut ?? null,
-          ai_life_cut_applied: false,
-        }
-      : null;
+  // Lab: vita 20, nessun modificatore narrativo
+  ai.life = 20;
+  const storyModifiers = null;
 
   // Chi inizia: se options.firstPlayer è 0|1 lo rispetta, altrimenti moneta a caso.
   // Il primo ha 3 carte in mano, il secondo 4.

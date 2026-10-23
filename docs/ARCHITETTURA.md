@@ -419,3 +419,20 @@ Chiudere il peek: «Torna al messaggio» (o chiudere il dialogo se previsto).
 
 Lab allineato end-to-end: client solo Partita base, backend senza lobby/PvP create, peek HUD operativo.
 Residui intenzionali: asset tema mummia (`login-mummy-phone.webp`), piramidi placeholder Storia/Endless/PvP in Home, campo DB `story_progress` non usato dal client.
+
+
+---
+
+## Note versioneB_6 (dead code A + create snello)
+
+### Frontend
+- CSS lobby PvP / badge Storia / trophy Home rimossi
+- Medaglioni HUD solo placeholder
+- `myPlayerIndex` fisso a 1 in lab
+
+### Backend create
+Body utile: `primaryColor`, `secondaryColor`, opz. `tertiaryColor`, `firstPlayer`, `gameMode`
+IA: primario = tertiary umano; vita 20; `story_modifiers` null
+
+### Profilo
+API non espone più `story_progress` (colonna DB eventualmente residuale, non usata)

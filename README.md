@@ -1,3 +1,13 @@
+## Note versioneB_6 (sezione A + D parziale)
+
+* FE: rimossi CSS morti (`.pvp-lobby*`, `.story-progress-badge`, `.story-medallion-banner`, `.home-trophy*`).
+* FE: niente più riferimenti DOM a badge/banner Storia; `syncMyPlayerIndex` sempre index 1 (lab).
+* BE: `CreateMatchOptions` solo `tertiaryColor` + `firstPlayer`; `createNewMatch` vita 20 e `story_modifiers: null`.
+* BE: rimosso `story_life_cut`; profilo API senza `story_progress`.
+* Tipo `StoryModifiers` resta su `GameState` (legacy serializzazione); lab non lo popola.
+* Cache: `game.js?v=B6`, `stage.css?v=B6`.
+* Fuori scope: split di `game.js` (eventuale B7+).
+
 ## Note versioneB_5 (rifinitura residuale)
 
 * Commenti client/backend allineati a Penombra (niente più «Bellum» nel header di `game.js`).

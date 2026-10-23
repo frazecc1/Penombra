@@ -17,7 +17,7 @@ function funnyBootLine(i) { return FUNNY_BOOT[i % FUNNY_BOOT.length]; }
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'versioneB_5-polish',
+  version: 'versioneB_6-dead-code',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -88,11 +88,9 @@ const toViewRow = (engineRow) => (myPlayerIndex === 1 ? engineRow : 2 - engineRo
 const toEngineRow = (viewRow) => (myPlayerIndex === 1 ? viewRow : 2 - viewRow);
 const toEnginePos = (viewPos) => viewPos ? { row: toEngineRow(viewPos.row), col: viewPos.col } : viewPos;
 const toViewPos = (enginePos) => enginePos ? { row: toViewRow(enginePos.row), col: enginePos.col } : enginePos;
-function syncMyPlayerIndex(userId) {
-  if (!state?.players || !userId) { myPlayerIndex = 1; return; }
-  if (state.players[1]?.user_id === userId) myPlayerIndex = 1;
-  else if (state.players[0]?.user_id === userId) myPlayerIndex = 0;
-  else myPlayerIndex = 1;
+function syncMyPlayerIndex(_userId) {
+  // Lab Partita base: umano sempre index 1 (IA = 0).
+  myPlayerIndex = 1;
 }
 const reaction = () => state?.pending_reaction?.responder_index === myPlayerIndex ? state.pending_reaction : null;
 const deathOrder = () => state?.pending_death_order?.chooser_index === myPlayerIndex ? state.pending_death_order : null;
@@ -1494,10 +1492,6 @@ function clearMatchUI() {
   closeColorDialog();
     try { reactionDialog()?.classList.add('hidden'); } catch (_) { /* ignore */ }
   try { choiceDialog()?.classList.add('hidden'); } catch (_) { /* ignore */ }
-  const medBanner = $('story-medallion-banner');
-  if (medBanner) medBanner.classList.add('hidden');
-  const storyProg = $('story-progress-badge');
-  if (storyProg) storyProg.classList.add('hidden');
   applyMedallionPlaceholders();
   // Svuota la griglia e la mano IA così non resta la partita vecchia a video
   const board = $('shared-board');
@@ -2352,14 +2346,10 @@ function applyMedallionPlaceholders() {
       notice(msg, 'success');
     };
   }
-  const badge = $('story-progress-badge');
-  if (badge) badge.classList.add('hidden');
 }
 
 /** Medaglioni HUD: sempre placeholder lab. */
 function updateStoryMedallionBanner() {
-  const old = $('story-medallion-banner');
-  if (old) old.classList.add('hidden');
   applyMedallionPlaceholders();
 }
 
