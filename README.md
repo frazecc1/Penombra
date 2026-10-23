@@ -1,3 +1,10 @@
+## Note versioneB_9 (fix Home dopo «Sono io»)
+
+* Bug B8: dopo lo split di `net.js`, `auth-ready` assegnava `_profileCache` (non più in scope) → **ReferenceError** e `showHome()` non partiva.
+* Fix: `clearProfileCache()` / `getProfileCache()` esportati da `net.js`.
+* Su `penombra:auth-ready`: reset stato partita in memoria + **sempre Home** (piramidi). Le spoglie solo al click su «Partita base».
+* Cache: `game.js?v=B9`.
+
 ## Note versioneB_8 (split moduli — net)
 
 * Nuovo `docs/js/game/net.js`: device id/label, token cache, `api()`, profilo (`pullProfile` / `setBaseMatchInProgress` / claim), cache carte (`card` / `clearCardCache`).

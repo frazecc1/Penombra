@@ -89,6 +89,8 @@ export async function api(path,options={}) {
 /** Sincronizza profilo server → localStorage (progressi + ultima partita). */
 /** Ultimo profilo server (per probePrior senza seconda GET). */
 let _profileCache = null;
+export function clearProfileCache() { _profileCache = null; }
+export function getProfileCache() { return _profileCache; }
 export async function pullProfileFromServer() {
   try {
     const profile = await api('/me/profile');

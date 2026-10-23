@@ -463,3 +463,16 @@ Split completo del monolite (board / net / shell) rimandato: alto accoppiamento 
 docs/js/game/net.js  ← API HTTP, profilo, device, cache carte
 ```
 Prossime tranche: board (draw/inspect/click), shell (home/anima/newMatch) — richiedono ancora stato partita nel entry.
+
+
+---
+
+## Note versioneB_9
+
+Flusso post-login / «Sono io»:
+1. `showGameScreen` → evento `penombra:auth-ready`
+2. Reset `state`/`matchId` in memoria
+3. `showHome()` (4 piramidi)
+4. `claimDeviceAndSync` in background
+
+«RIPRENDI le spoglie» solo dopo click su piramide Partita base → `startScreen()`.

@@ -1,5 +1,5 @@
 // docs/js/game.js — Penombra (lab Partita base). Entry principale.
-// Moduli: storage, constants, peek, net
+// Moduli: storage, constants, peek, net (+ fix home dopo Sono io)
 // Flusso: login → home → Partita base → fine partita.
 import { getAccessToken, getCurrentUser, signOut, usernameFromEmail, showAuthScreen } from './auth.js';
 import { API, SHOW_BASE_MATCH_PYRAMID } from './config.js';
@@ -16,13 +16,14 @@ import {
   getDeviceId, getDeviceLabel, getAccessTokenCached, api,
   pullProfileFromServer, setBaseMatchInProgress, isBaseMatchInProgress,
   baseMatchIdHint, claimDeviceAndSync, card, getCardCache, clearCardCache,
+  clearProfileCache, getProfileCache,
 } from './game/net.js';
 
 const $ = id => document.getElementById(id);
 
 /** Debug F12: window.__penombraDebug */
 window.__penombraDebug = {
-  version: 'versioneB_8-net',
+  version: 'versioneB_9-home-auth',
   hasDrawUi: () => typeof showDrawPlayerChoice === 'function',
   state: () => state,
   matchId: () => matchId,
@@ -2731,8 +2732,9 @@ async function probePrior() {
   priorMatch = null;
   // Preferisci cache profilo (claimDevice) → localStorage → GET /me/profile
   let prior = null;
-  if (_profileCache?.last_match_id) {
-    prior = String(_profileCache.last_match_id);
+  const _pc = getProfileCache();
+  if (_pc?.last_match_id) {
+    prior = String(_pc.last_match_id);
   }
   if (!prior) {
     try { prior = lsGet('penombra:last-match'); } catch (_) { prior = null; }
@@ -2740,7 +2742,7 @@ async function probePrior() {
   if (!prior) {
     try {
       const profile = await api('/me/profile');
-      _profileCache = profile;
+      /* profile in net cache via pullProfileFromServer */
       if (profile?.last_match_id) prior = String(profile.last_match_id);
     } catch (_) { /* ignore */ }
   }
@@ -3152,11 +3154,19 @@ async function init() {
 window.addEventListener('penombra:auth-ready', () => {
   // Solo Home (piramidi). Il dialog «spoglie» esce SOLO al click sulla piramide «Partita base».
   priorProbed = false;
-  _profileCache = null;
-  try { showHome(); } catch (_) { /* ignore */ }
+  try { clearProfileCache(); } catch (_) { /* ignore */ }
+  // Nessuna partita residua in memoria: dopo «Sono io» / login si vede sempre la Home.
+  matchId = null;
+  state = null;
+  flow = null;
+  view = null;
+  busy = false;
+  priorMatch = null;
+  try { hideStart(); } catch (_) { /* ignore */ }
+  try { close(); } catch (_) { /* ignore */ }
+  try { showHome(); } catch (e) { console.warn('showHome', e); }
   init()
     .then(() => claimDeviceAndSync().catch(() => {}))
-    // Niente probePrior pesante: per la base basta base_match_in_progress dal profilo
     .catch(fail);
 });
 
