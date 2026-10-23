@@ -483,3 +483,12 @@ Flusso post-login / «Sono io»:
 ## Note versioneB_10
 
 `net.js`: `cache` + `cardLoaded` (TTL 5 min); `clearCardCache()` a ogni `newMatch`.
+
+
+---
+
+## Note versioneB_11
+
+```
+docs/js/game/cards-ui.js  ← rendering HTML carte (senza stato partita)
+```

@@ -1,3 +1,10 @@
+## Note versioneB_11 (split moduli — cards-ui)
+
+* Nuovo `docs/js/game/cards-ui.js`: escape, faction, costi, `cellHTML` / `handCardHTML` / `cardHTML`, `opponentImageHtml`.
+* Puro (niente `state`/`matchId`); solo import da `constants.js`.
+* `game.js` ~3180 → ~2746 righe.
+* Cache: `game.js?v=B11`.
+
 ## Note versioneB_10 (fix cardLoaded)
 
 * In `net.js` mancava `const cardLoaded = new Map()` (rimosso per errore nello split B8): `card()` e `clearCardCache()` andavano in ReferenceError.
