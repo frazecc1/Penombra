@@ -1,3 +1,9 @@
+## Note versioneB_8 (split moduli — net)
+
+* Nuovo `docs/js/game/net.js`: device id/label, token cache, `api()`, profilo (`pullProfile` / `setBaseMatchInProgress` / claim), cache carte (`card` / `clearCardCache`).
+* `game.js` importa `net` e non contiene più quelle funzioni.
+* Cache: `game.js?v=B8`.
+
 ## Note versioneB_7 (split moduli — prima tranche)
 
 * `game.js` resta entry; estratti moduli ES:

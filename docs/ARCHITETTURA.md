@@ -453,3 +453,13 @@ docs/js/music.js
 ```
 
 Split completo del monolite (board / net / shell) rimandato: alto accoppiamento su `state` / `matchId` / `busy`.
+
+
+---
+
+## Note versioneB_8
+
+```
+docs/js/game/net.js  ← API HTTP, profilo, device, cache carte
+```
+Prossime tranche: board (draw/inspect/click), shell (home/anima/newMatch) — richiedono ancora stato partita nel entry.
