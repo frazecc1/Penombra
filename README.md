@@ -1,3 +1,9 @@
+## Note versioneB_10 (fix cardLoaded)
+
+* In `net.js` mancava `const cardLoaded = new Map()` (rimosso per errore nello split B8): `card()` e `clearCardCache()` andavano in ReferenceError.
+* Ripristinata la Map TTL carte accanto a `cache`.
+* Cache: `game.js?v=B10`.
+
 ## Note versioneB_9 (fix Home dopo «Sono io»)
 
 * Bug B8: dopo lo split di `net.js`, `auth-ready` assegnava `_profileCache` (non più in scope) → **ReferenceError** e `showHome()` non partiva.

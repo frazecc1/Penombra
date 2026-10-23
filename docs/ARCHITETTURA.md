@@ -476,3 +476,10 @@ Flusso post-login / «Sono io»:
 4. `claimDeviceAndSync` in background
 
 «RIPRENDI le spoglie» solo dopo click su piramide Partita base → `startScreen()`.
+
+
+---
+
+## Note versioneB_10
+
+`net.js`: `cache` + `cardLoaded` (TTL 5 min); `clearCardCache()` a ogni `newMatch`.

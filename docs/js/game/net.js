@@ -5,6 +5,7 @@ import { lsGet, lsSet, lsRemove } from './storage.js';
 import { TOKEN_TTL_MS, CARD_TTL } from './constants.js';
 
 const cache = new Map();
+const cardLoaded = new Map();
 export function getCardCache() { return cache; }
 export function clearCardCache() {
   cache.clear();
